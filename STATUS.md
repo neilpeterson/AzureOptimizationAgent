@@ -18,15 +18,15 @@
 - [x] `src/functions/shared/cost_calculator.py` - Generic severity classification & cost utilities (refactored)
 - [ ] Unit tests for shared library
 
-## Phase 3: Data Layer Functions
-- [ ] `src/functions/function_app.py` - Main entry point
-- [ ] `src/functions/data_layer/__init__.py`
-- [ ] `src/functions/data_layer/get_module_registry.py`
-- [ ] `src/functions/data_layer/save_findings.py`
-- [ ] `src/functions/data_layer/get_findings_history.py`
-- [ ] `src/functions/data_layer/get_subscription_owners.py`
-- [ ] `data/seed/module-registry.json` - Seed data
-- [ ] `data/seed/subscription-owners.sample.json` - Sample data
+## Phase 3: Data Layer Functions ✅
+- [x] `src/functions/function_app.py` - Main entry point with all HTTP triggers
+- [x] `src/functions/data_layer/__init__.py`
+- [x] `src/functions/data_layer/get_module_registry.py`
+- [x] `src/functions/data_layer/save_findings.py`
+- [x] `src/functions/data_layer/get_findings_history.py`
+- [x] `src/functions/data_layer/get_subscription_owners.py`
+- [x] `data/seed/module-registry.json` - Seed data for abandoned-resources module
+- [x] `data/seed/subscription-owners.sample.json` - Sample owner mappings
 - [ ] Integration tests
 
 ## Phase 4: Detection Layer ✅
@@ -74,6 +74,7 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Completed Phase 3 Data Layer - added `function_app.py` with HTTP triggers for all endpoints (`/api/get-module-registry`, `/api/save-findings`, `/api/get-findings-history`, `/api/get-subscription-owners`, `/api/abandoned-resources`, `/api/health`). Created data_layer module with 4 functions. Added `get_all_modules()` and `get_findings_by_subscription_and_status()` to CosmosClient. Created seed data files for module registry and sample subscription owners.
 - **2026-01-10:** Ran `/scrub` - removed 2 unused imports (PartitionKey, get_confidence_level), fixed load balancer KQL query (`== null` → `isnull()`), added `from __future__ import annotations` for Python 3.9 compatibility. All ruff checks pass. Verified live detection against Azure subscription - found 1 unused public IP. Phase 4 complete.
 - **2026-01-10:** Completed `detector.py` - main detection orchestration that wires together queries, confidence scoring, and cost estimation. Implements module interface contract (ModuleInput → ModuleOutput). Added `detect()` and `detect_from_dict()` entry points. Also exported `ModuleSummary` from shared library.
 - **2026-01-09:** Refactored confidence scoring to maintain modularity. Generic utilities in `shared/confidence.py`, module-specific logic (name patterns, tag checks, orphan duration) moved to `detection_layer/abandoned_resources/confidence.py`. Future modules (e.g., Overprovisioned VMs) can implement their own confidence logic.

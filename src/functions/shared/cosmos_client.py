@@ -53,6 +53,12 @@ class CosmosClient:
         query = "SELECT * FROM c WHERE c.enabled = true AND c.status = 'active'"
         return list(container.query_items(query, enable_cross_partition_query=True))
 
+    def get_all_modules(self) -> list[dict[str, Any]]:
+        """Get all modules from the registry (including disabled)."""
+        container = self._get_container(self.MODULE_REGISTRY)
+        query = "SELECT * FROM c"
+        return list(container.query_items(query, enable_cross_partition_query=True))
+
     def get_module(self, module_id: str) -> dict[str, Any] | None:
         """Get a specific module by ID."""
         container = self._get_container(self.MODULE_REGISTRY)
@@ -91,6 +97,28 @@ class CosmosClient:
         """
         parameters = [
             {"name": "@subscriptionId", "value": subscription_id},
+            {"name": "@limit", "value": limit},
+        ]
+        return list(
+            container.query_items(
+                query, parameters=parameters, partition_key=subscription_id
+            )
+        )
+
+    def get_findings_by_subscription_and_status(
+        self, subscription_id: str, status: str, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """Get findings for a subscription filtered by status."""
+        container = self._get_container(self.FINDINGS_HISTORY)
+        query = """
+            SELECT * FROM c
+            WHERE c.subscriptionId = @subscriptionId AND c.status = @status
+            ORDER BY c.executionDate DESC
+            OFFSET 0 LIMIT @limit
+        """
+        parameters = [
+            {"name": "@subscriptionId", "value": subscription_id},
+            {"name": "@status", "value": status},
             {"name": "@limit", "value": limit},
         ]
         return list(
