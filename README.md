@@ -276,6 +276,7 @@ python scripts/test_detector_live.py --all-types
 
 | Document | Description |
 |----------|-------------|
+| [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment instructions |
 | [Design Document](OptimizationAgent.md) | Full architecture and specifications |
 | [Module Contracts](docs/module-contracts.md) | Input/output schemas for detection modules |
 | [Module Registration](docs/module-registration.md) | How to register modules in Cosmos DB |
