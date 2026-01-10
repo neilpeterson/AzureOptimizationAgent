@@ -85,7 +85,77 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 
 ## Execution Flow
 
-The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly schedule, it autonomously executes a sequence of tool calls to detect optimization opportunities and notify owners.
+The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly schedule, it autonomously executes a sequence of tool calls, **receives and analyzes the results**, then decides next actions.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                            AZURE AI FOUNDRY AGENT (GPT-4o)                              │
+│                                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 1. GET MODULES                                                                  │    │
+│  │    Call: GET /api/get-module-registry                                           │    │
+│  │    Response: ["abandoned-resources", "overprovisioned-vms", ...]                │    │
+│  │    Agent decides: "I'll run each enabled module"                                │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 2. RUN DETECTION                                                                │    │
+│  │    Call: POST /api/abandoned-resources {subscriptionIds: [...]}                 │    │
+│  │    Response: {findings: [...], summary: {totalSavings: $2,847, ...}}            │    │
+│  │    Agent analyzes: "Found 47 findings, $2,847/month potential savings"          │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 3. SAVE & ANALYZE                                                               │    │
+│  │    Call: POST /api/save-findings {findings: [...]}                              │    │
+│  │    Agent reasons: "Group findings by subscription, identify owners to notify"   │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 4. GET OWNERS                                                                   │    │
+│  │    Call: POST /api/subscription-owners {subscriptionIds: ["sub-1", "sub-2"]}    │    │
+│  │    Response: [{ownerEmail: "team-a@...", findings: [...]}, ...]                 │    │
+│  │    Agent decides: "Send personalized report to each owner"                      │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 5. SEND NOTIFICATIONS                                                           │    │
+│  │    Call: POST /logic-app/send-email {owner: "team-a@...", findings: [...]}      │    │
+│  │    Agent can customize: prioritize critical findings, add recommendations       │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What the Agent Receives and Analyzes
+
+After each detection run, the agent receives a full `ModuleOutput` containing:
+
+```json
+{
+  "findings": [
+    {"resourceId": "...", "severity": "high", "estimatedMonthlyCost": 150.00, ...},
+    {"resourceId": "...", "severity": "medium", "estimatedMonthlyCost": 38.40, ...}
+  ],
+  "summary": {
+    "totalFindings": 47,
+    "totalEstimatedMonthlySavings": 2847.50,
+    "findingsBySeverity": {"critical": 2, "high": 8, "medium": 25, "low": 12}
+  }
+}
+```
+
+The agent uses this data to:
+- **Prioritize**: Focus on critical/high severity findings first
+- **Group**: Organize findings by subscription owner for personalized reports
+- **Recommend**: Suggest remediation actions based on resource type
+- **Summarize**: Create executive summaries of optimization opportunities
+
+### Tool Call Flow
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
@@ -106,8 +176,6 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
                   │   DB    │    │  Graph   │    │   DB    │    │   App    │
                   └─────────┘    └──────────┘    └─────────┘    └──────────┘
 ```
-
-The agent uses HTTP tool calls to interact with Azure Functions, which in turn query Cosmos DB and Resource Graph using managed identity authentication.
 
 ## Azure Resources
 
