@@ -142,22 +142,23 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 ### Tool Call Flow
 
 ```
-Timer Trigger
-     │
-     ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  GET /module-   │───►│ POST /abandoned-│───►│ POST /save-     │
-│  registry       │    │ resources       │    │ findings        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                      │
-     ┌────────────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ GET /findings-  │───►│ POST /get-      │───►│ POST /send-     │
-│ trends          │    │ subscription-   │    │ optimization-   │
-│                 │    │ owners          │    │ email           │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                           AZURE AI FOUNDRY AGENT (GPT-4o)                      │
+│                                                                                │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
+│  │  Timer   │    │   Get    │    │   Run    │    │   Save   │    │   Send   │  │
+│  │ Trigger  │───►│ Modules  │───►│Detection │───►│ Findings │───►│  Email   │  │
+│  │(Monthly) │    │          │    │          │    │          │    │          │  │
+│  └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
+│                       │               │               │               │        │
+│                  Tool Call       Tool Call       Tool Call       Tool Call     │
+└──────────────────────┬───────────────┬───────────────┬───────────────┬─────────┘
+                       │               │               │               │
+                       ▼               ▼               ▼               ▼
+                  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐
+                  │ Cosmos  │    │ Resource │    │ Cosmos  │    │  Logic   │
+                  │   DB    │    │  Graph   │    │   DB    │    │   App    │
+                  └─────────┘    └──────────┘    └─────────┘    └──────────┘
 ```
 
 ### What the Agent Receives and Analyzes
