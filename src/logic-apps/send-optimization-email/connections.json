@@ -1,0 +1,16 @@
+{
+    "managedApiConnections": {
+        "office365": {
+            "api": {
+                "id": "/subscriptions/@appsetting('AZURE_SUBSCRIPTION_ID')/providers/Microsoft.Web/locations/@appsetting('AZURE_REGION')/managedApis/office365"
+            },
+            "connection": {
+                "id": "/subscriptions/@appsetting('AZURE_SUBSCRIPTION_ID')/resourceGroups/@appsetting('AZURE_RESOURCE_GROUP')/providers/Microsoft.Web/connections/office365"
+            },
+            "connectionRuntimeUrl": "@appsetting('OFFICE365_CONNECTION_RUNTIME_URL')",
+            "authentication": {
+                "type": "ManagedServiceIdentity"
+            }
+        }
+    }
+}

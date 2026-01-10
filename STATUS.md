@@ -49,11 +49,13 @@
 - [ ] Configure AI Foundry project (manual Azure portal step)
 - [ ] Test agent tool calls (requires deployed infrastructure)
 
-## Phase 6: Notification Layer
-- [ ] `src/logic-apps/send-optimization-email/workflow.json` - Workflow definition
-- [ ] `src/logic-apps/templates/email-template.html` - Email template
-- [ ] Configure Office 365 connector
-- [ ] Test email delivery
+## Phase 6: Notification Layer ✅
+- [x] `src/logic-apps/send-optimization-email/workflow.json` - Workflow definition with HTTP trigger
+- [x] `src/logic-apps/send-optimization-email/connections.json` - Office 365 connector configuration
+- [x] `src/logic-apps/templates/email-template.html` - Professional HTML email template
+- [x] `src/functions/function_app.py` - Added `/api/send-optimization-email` endpoint
+- [ ] Configure Office 365 connector (manual Azure portal step)
+- [ ] Test email delivery (requires deployed infrastructure)
 
 ## Testing & Validation
 - [x] `scripts/test_detector_live.py` - Live detector test against Azure subscriptions
@@ -81,6 +83,7 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Completed Phase 6 Notification Layer. Created `src/logic-apps/send-optimization-email/` with: `workflow.json` (Logic App workflow with HTTP trigger and Office 365 email action), `connections.json` (Office 365 connector config). Created `email-template.html` with professional styling, trend messaging, and findings display. Added `/api/send-optimization-email` endpoint to function_app.py that forwards requests to Logic App and adds resource-specific recommendations. Remaining manual steps: configure Office 365 connector in Azure portal and test email delivery.
 - **2026-01-10:** Ran `/scrub` - removed 4 unused imports from `run_agent.py` (AgentThread, FunctionTool, MessageRole, ToolSet). Updated PLAN.md directory structure to match actual implementation (detection_layer now has abandoned_resources subdirectory with separate files for queries, config, confidence, cost_calculator). Added get_findings_trends.py to PLAN.md. Removed specific "200 subscriptions" reference from PLAN.md. All imports verified working. No sensitive data in repo.
 - **2026-01-10:** Completed Phase 5 AI Agent Configuration. Created `src/agent/` directory with: `system_prompt.txt` (agent instructions with 6-step workflow), `tool_definitions.json` (OpenAPI-style schemas for all 8 endpoints), and `run_agent.py` (orchestration script using Azure AI Foundry SDK with CLI args for --dry-run and --subscriptions). Remaining manual steps: configure AI Foundry project in Azure portal and test agent tool calls.
 - **2026-01-10:** Added `get-findings-trends` endpoint for month-over-month analysis. Module-agnostic design works for any detection module. Enables AI agent to add historical context to notifications (e.g., "Findings decreased from 50 to 22, great progress!"). Added `get_findings_for_trends()` to CosmosClient. Updated README execution flow and module-contracts.md with trends schema.

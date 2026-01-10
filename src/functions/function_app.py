@@ -7,6 +7,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import urllib.request
+import urllib.error
 
 import azure.functions as func
 
@@ -321,6 +324,142 @@ def abandoned_resources_handler(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
             status_code=500,
         )
+
+
+# =============================================================================
+# Notification Layer Endpoints
+# =============================================================================
+
+
+@app.route(route="send-optimization-email", methods=["POST"])
+def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
+    """Send optimization report email via Logic App.
+
+    POST /api/send-optimization-email
+    Body:
+        {
+            "ownerEmail": "owner@example.com",
+            "ownerName": "John Doe",
+            "subscriptionId": "sub-123",
+            "subscriptionName": "Production",
+            "findings": [...],
+            "trends": {...},
+            "totalEstimatedMonthlyCost": 500.00
+        }
+
+    Returns:
+        200: Email sent successfully
+        400: Invalid request body
+        500: Error sending email
+        503: Logic App URL not configured
+    """
+    logic_app_url = os.environ.get("LOGIC_APP_URL")
+    if not logic_app_url:
+        return func.HttpResponse(
+            json.dumps({"error": "LOGIC_APP_URL environment variable not configured"}),
+            mimetype="application/json",
+            status_code=503,
+        )
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"error": "Invalid JSON body"}),
+            mimetype="application/json",
+            status_code=400,
+        )
+
+    # Validate required fields
+    if not body.get("ownerEmail") or not body.get("subscriptionId") or not body.get("findings"):
+        return func.HttpResponse(
+            json.dumps({"error": "ownerEmail, subscriptionId, and findings are required"}),
+            mimetype="application/json",
+            status_code=400,
+        )
+
+    # Add recommendations to findings if not present
+    findings_with_recommendations = []
+    for finding in body.get("findings", []):
+        if "recommendation" not in finding:
+            finding["recommendation"] = _get_recommendation(finding.get("resourceType", ""))
+        findings_with_recommendations.append(finding)
+    body["findings"] = findings_with_recommendations
+
+    try:
+        # Forward request to Logic App
+        request_data = json.dumps(body).encode("utf-8")
+        request_obj = urllib.request.Request(
+            logic_app_url,
+            data=request_data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        with urllib.request.urlopen(request_obj, timeout=30) as response:
+            response_data = response.read().decode("utf-8")
+            return func.HttpResponse(
+                response_data,
+                mimetype="application/json",
+                status_code=response.status,
+            )
+    except urllib.error.HTTPError as e:
+        logger.exception("Logic App returned error")
+        return func.HttpResponse(
+            json.dumps({"error": f"Logic App error: {e.code}"}),
+            mimetype="application/json",
+            status_code=500,
+        )
+    except urllib.error.URLError as e:
+        logger.exception("Failed to connect to Logic App")
+        return func.HttpResponse(
+            json.dumps({"error": f"Connection error: {e.reason}"}),
+            mimetype="application/json",
+            status_code=500,
+        )
+    except Exception as e:
+        logger.exception("Error sending optimization email")
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500,
+        )
+
+
+def _get_recommendation(resource_type: str) -> str:
+    """Get recommendation text based on resource type."""
+    recommendations = {
+        "microsoft.compute/disks": (
+            "Consider deleting this disk or attaching it to a VM. "
+            "If needed for backup, consider using snapshots instead."
+        ),
+        "microsoft.network/publicipaddresses": (
+            "Delete this IP if no longer needed, or associate it with "
+            "a resource to avoid charges."
+        ),
+        "microsoft.network/loadbalancers": (
+            "Remove this load balancer or configure backend pools."
+        ),
+        "microsoft.network/natgateways": (
+            "Delete or associate with a subnet."
+        ),
+        "microsoft.sql/servers/elasticpools": (
+            "Remove or add databases to the pool."
+        ),
+        "microsoft.network/virtualnetworkgateways": (
+            "Delete if VPN/ExpressRoute connectivity is no longer needed."
+        ),
+        "microsoft.network/ddosprotectionplans": (
+            "Delete or associate with virtual networks."
+        ),
+        "microsoft.network/privateendpoints": (
+            "Reconnect to target resource or delete."
+        ),
+    }
+    return recommendations.get(
+        resource_type.lower(),
+        "Review this resource and delete if no longer needed."
+    )
 
 
 # =============================================================================
