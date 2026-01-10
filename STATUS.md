@@ -1,0 +1,80 @@
+# Implementation Status
+
+> Last Updated: 2026-01-09
+
+## Phase 1: Infrastructure ✅
+- [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP
+- [x] `infra/main.bicepparam` - Deployment parameters
+- [x] Deploy to dev environment
+- [x] Validate RBAC assignments
+
+## Phase 2: Shared Library ✅
+- [x] `src/functions/requirements.txt` - Python dependencies
+- [x] `src/functions/shared/__init__.py` - Public API exports
+- [x] `src/functions/shared/models.py` - Pydantic data contracts (Finding, ModuleInput/Output, etc.)
+- [x] `src/functions/shared/cosmos_client.py` - Cosmos DB wrapper with managed identity
+- [x] `src/functions/shared/resource_graph.py` - Generic Resource Graph client (refactored)
+- [x] `src/functions/shared/confidence.py` - Generic confidence utilities (refactored)
+- [x] `src/functions/shared/cost_calculator.py` - Generic severity classification & cost utilities (refactored)
+- [ ] Unit tests for shared library
+
+## Phase 3: Data Layer Functions
+- [ ] `src/functions/function_app.py` - Main entry point
+- [ ] `src/functions/data_layer/__init__.py`
+- [ ] `src/functions/data_layer/get_module_registry.py`
+- [ ] `src/functions/data_layer/save_findings.py`
+- [ ] `src/functions/data_layer/get_findings_history.py`
+- [ ] `src/functions/data_layer/get_subscription_owners.py`
+- [ ] `data/seed/module-registry.json` - Seed data
+- [ ] `data/seed/subscription-owners.sample.json` - Sample data
+- [ ] Integration tests
+
+## Phase 4: Detection Layer (Started)
+- [x] `src/functions/detection_layer/__init__.py`
+- [x] `src/functions/detection_layer/abandoned_resources/__init__.py`
+- [x] `src/functions/detection_layer/abandoned_resources/confidence.py` - Module-specific confidence scoring
+- [x] `src/functions/detection_layer/abandoned_resources/cost_calculator.py` - Module-specific cost estimation
+- [x] `src/functions/detection_layer/abandoned_resources/queries.py` - KQL queries for 8 resource types
+- [x] `src/functions/detection_layer/abandoned_resources/config.py` - Module-specific configuration schema
+- [ ] `src/functions/detection_layer/abandoned_resources/detector.py` - Main detection logic
+- [ ] Test with dry run
+- [ ] Test against real subscriptions
+
+## Phase 5: AI Agent Configuration
+- [ ] `src/agent/system_prompt.txt` - Agent instructions
+- [ ] `src/agent/tool_definitions.json` - Tool schemas
+- [ ] `src/agent/run_agent.py` - Orchestration script
+- [ ] Configure AI Foundry project
+- [ ] Test agent tool calls
+
+## Phase 6: Notification Layer
+- [ ] `src/logic-apps/send-optimization-email/workflow.json` - Workflow definition
+- [ ] `src/logic-apps/templates/email-template.html` - Email template
+- [ ] Configure Office 365 connector
+- [ ] Test email delivery
+
+## Testing & Validation
+- [ ] Unit test suite
+- [ ] Integration test suite
+- [ ] E2E test with test subscriptions
+- [ ] Dry run across all 200 subscriptions
+- [ ] Pilot with 20 subscriptions
+
+## Documentation
+- [x] `docs/shared-library.md` - Shared library architecture and module integration guide
+- [x] `CLAUDE.md` - Project instructions for Claude Code
+- [x] `PLAN.md` - Implementation roadmap
+- [x] `OptimizationAgent.md` - Original design document
+
+## Claude Commands
+- [x] `.claude/commands/scrub.md` - Project cleanup and code review command
+- [x] `.claude/commands/deploy.md` - Azure infrastructure deployment command
+
+## Blockers & Issues
+- None yet
+
+## Notes
+- **2026-01-09:** Refactored confidence scoring to maintain modularity. Generic utilities in `shared/confidence.py`, module-specific logic (name patterns, tag checks, orphan duration) moved to `detection_layer/abandoned_resources/confidence.py`. Future modules (e.g., Overprovisioned VMs) can implement their own confidence logic.
+- **2026-01-09:** Refactored cost calculator similarly. Generic severity classification and aggregation utilities remain in `shared/cost_calculator.py`. Resource-type-specific pricing (ABANDONED_RESOURCE_COSTS lookup table, estimate_abandoned_resource_cost) moved to `detection_layer/abandoned_resources/cost_calculator.py`.
+- **2026-01-09:** Refactored resource_graph.py. Generic ResourceGraphClient (query, query_batched, query_single) remains in shared. All 8 KQL queries moved to `detection_layer/abandoned_resources/queries.py`. Future modules can define their own queries (e.g., VM metrics queries for overprovisioned detection).
+- **2026-01-09:** Refactored ModuleConfiguration out of shared/models.py. `ModuleRegistry.configuration` is now `dict[str, Any]` (opaque to shared library). Each module defines its own config schema - see `detection_layer/abandoned_resources/config.py` for AbandonedResourcesConfig with resource_types, minimum_orphan_age_days, etc.

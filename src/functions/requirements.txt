@@ -1,0 +1,14 @@
+# Azure Functions runtime
+azure-functions>=1.17.0
+
+# Azure SDK - Cosmos DB
+azure-cosmos>=4.5.0
+
+# Azure SDK - Identity (managed identity auth)
+azure-identity>=1.15.0
+
+# Azure SDK - Resource Graph queries
+azure-mgmt-resourcegraph>=8.0.0
+
+# Data validation
+pydantic>=2.5.0
