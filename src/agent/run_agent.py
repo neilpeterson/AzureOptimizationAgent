@@ -38,12 +38,6 @@ from typing import Any
 # Azure AI Foundry imports
 try:
     from azure.ai.projects import AIProjectClient
-    from azure.ai.projects.models import (
-        AgentThread,
-        FunctionTool,
-        MessageRole,
-        ToolSet,
-    )
     from azure.identity import DefaultAzureCredential
 except ImportError:
     print("Error: Azure AI Foundry SDK not installed.")
