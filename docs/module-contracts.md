@@ -254,6 +254,123 @@ return output.model_dump(by_alias=True)
 
 ---
 
+## FindingsTrends
+
+The trends endpoint provides month-over-month analysis for any detection module. This enables the AI agent to add historical context to notifications (e.g., "Great job! Abandoned disks decreased from 50 to 22").
+
+### Request
+
+```
+GET /api/get-findings-trends?module_id=abandoned-resources&months=3&subscription_id=xxx
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `module_id` | string | Yes | Module ID (e.g., 'abandoned-resources', 'overprovisioned-vms') |
+| `months` | int | No | Number of months to analyze (default: 3) |
+| `subscription_id` | string | No | Filter to specific subscription |
+
+### Response Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `moduleId` | string | Module ID that was queried |
+| `subscriptionId` | string | Subscription filter (if provided) |
+| `periodMonths` | int | Number of months analyzed |
+| `generatedAt` | datetime | When the trends were calculated |
+| `trends` | MonthlyTrend[] | Array of monthly aggregates (most recent first) |
+| `summary` | TrendSummary | Month-over-month change summary |
+
+### MonthlyTrend
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `month` | string | Year-month (e.g., "2026-01") |
+| `totalFindings` | int | Number of findings that month |
+| `totalCost` | float | Total estimated monthly cost |
+| `bySeverity` | object | Count per severity level |
+| `byResourceType` | object | Count per resource type |
+| `subscriptionsAffected` | int | Number of subscriptions with findings |
+
+### TrendSummary
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `hasComparison` | boolean | Whether comparison data is available |
+| `currentMonth` | string | Current month being compared |
+| `previousMonth` | string | Previous month being compared |
+| `findingsChange` | int | Change in finding count (negative = improvement) |
+| `findingsChangePercent` | float | Percentage change |
+| `costChange` | float | Change in estimated cost |
+| `costChangePercent` | float | Percentage cost change |
+| `trend` | string | "improving", "worsening", or "stable" |
+| `message` | string | Human-readable trend message for notifications |
+
+### Example Response
+
+```json
+{
+  "moduleId": "abandoned-resources",
+  "subscriptionId": null,
+  "periodMonths": 3,
+  "generatedAt": "2026-01-10T14:30:00Z",
+  "trends": [
+    {
+      "month": "2026-01",
+      "totalFindings": 22,
+      "totalCost": 850.00,
+      "bySeverity": {"high": 3, "medium": 12, "low": 7},
+      "byResourceType": {"microsoft.compute/disks": 15, "microsoft.network/publicipaddresses": 7},
+      "subscriptionsAffected": 18
+    },
+    {
+      "month": "2025-12",
+      "totalFindings": 50,
+      "totalCost": 1920.00,
+      "bySeverity": {"critical": 2, "high": 8, "medium": 25, "low": 15},
+      "byResourceType": {"microsoft.compute/disks": 30, "microsoft.network/publicipaddresses": 20},
+      "subscriptionsAffected": 35
+    },
+    {
+      "month": "2025-11",
+      "totalFindings": 45,
+      "totalCost": 1730.00,
+      "bySeverity": {"high": 5, "medium": 28, "low": 12},
+      "byResourceType": {"microsoft.compute/disks": 28, "microsoft.network/publicipaddresses": 17},
+      "subscriptionsAffected": 32
+    }
+  ],
+  "summary": {
+    "hasComparison": true,
+    "currentMonth": "2026-01",
+    "previousMonth": "2025-12",
+    "findingsChange": -28,
+    "findingsChangePercent": -56.0,
+    "costChange": -1070.00,
+    "costChangePercent": -55.7,
+    "trend": "improving",
+    "message": "Great progress! Findings decreased from 50 to 22 (56% reduction), saving an estimated $1,070.00/month compared to 2025-12."
+  }
+}
+```
+
+### Module-Agnostic Design
+
+The trends endpoint works with any detection module. Examples:
+
+```bash
+# Abandoned resources trends
+GET /api/get-findings-trends?module_id=abandoned-resources&months=6
+
+# Overprovisioned VMs trends (when module is added)
+GET /api/get-findings-trends?module_id=overprovisioned-vms&months=3
+
+# Idle databases trends for a specific subscription
+GET /api/get-findings-trends?module_id=idle-databases&subscription_id=xxx
+```
+
+---
+
 ## HTTP API
 
 Detection modules are exposed as Azure Functions with the following endpoint pattern:

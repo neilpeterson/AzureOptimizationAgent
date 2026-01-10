@@ -108,24 +108,32 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 3. SAVE & ANALYZE                                                               │    │
+│  │ 3. SAVE FINDINGS                                                                │    │
 │  │    Call: POST /api/save-findings {findings: [...]}                              │    │
-│  │    Agent reasons: "Group findings by subscription, identify owners to notify"   │    │
+│  │    Agent reasons: "Findings saved, now get historical trends for context"       │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 4. GET OWNERS                                                                   │    │
+│  │ 4. GET TRENDS                                                                   │    │
+│  │    Call: GET /api/get-findings-trends?module_id=abandoned-resources&months=3    │    │
+│  │    Response: {trends: [...], summary: {trend: "improving", message: "..."}}     │    │
+│  │    Agent analyzes: "Findings down 56% from last month - great progress!"        │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 5. GET OWNERS                                                                   │    │
 │  │    Call: POST /api/subscription-owners {subscriptionIds: ["sub-1", "sub-2"]}    │    │
 │  │    Response: [{ownerEmail: "team-a@...", findings: [...]}, ...]                 │    │
-│  │    Agent decides: "Send personalized report to each owner"                      │    │
+│  │    Agent decides: "Send personalized report with trend context to each owner"   │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 5. SEND NOTIFICATIONS                                                           │    │
-│  │    Call: POST /logic-app/send-email {owner: "team-a@...", findings: [...]}      │    │
-│  │    Agent can customize: prioritize critical findings, add recommendations       │    │
+│  │ 6. SEND NOTIFICATIONS                                                           │    │
+│  │    Call: POST /logic-app/send-email {owner: "...", findings: [...], trends: {}} │    │
+│  │    Agent customizes: "Great job reducing abandoned disks from 50 to 22!"        │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                                                                         │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
@@ -149,11 +157,30 @@ After each detection run, the agent receives a full `ModuleOutput` containing:
 }
 ```
 
+The agent also retrieves **historical trends** for month-over-month context:
+
+```json
+{
+  "moduleId": "abandoned-resources",
+  "trends": [
+    {"month": "2026-01", "totalFindings": 22, "totalCost": 850.00},
+    {"month": "2025-12", "totalFindings": 50, "totalCost": 1920.00}
+  ],
+  "summary": {
+    "findingsChange": -28,
+    "findingsChangePercent": -56.0,
+    "trend": "improving",
+    "message": "Great progress! Findings decreased from 50 to 22 (56% reduction)..."
+  }
+}
+```
+
 The agent uses this data to:
 - **Prioritize**: Focus on critical/high severity findings first
 - **Group**: Organize findings by subscription owner for personalized reports
 - **Recommend**: Suggest remediation actions based on resource type
 - **Summarize**: Create executive summaries of optimization opportunities
+- **Contextualize**: Add historical trends to show progress or highlight regressions
 
 ## Azure Resources
 
