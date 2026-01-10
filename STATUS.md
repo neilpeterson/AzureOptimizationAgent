@@ -54,14 +54,19 @@
 - [ ] Test email delivery
 
 ## Testing & Validation
+- [x] `scripts/test_detector_live.py` - Live detector test against Azure subscriptions
+- [x] `scripts/test_data_layer_live.py` - Live data layer test against Cosmos DB
 - [ ] Unit test suite
 - [ ] Integration test suite
 - [ ] E2E test with test subscriptions
-- [ ] Dry run across all 200 subscriptions
-- [ ] Pilot with 20 subscriptions
+- [ ] Dry run across all subscriptions
+- [ ] Pilot with subset of subscriptions
 
 ## Documentation
 - [x] `docs/shared-library.md` - Shared library architecture and module integration guide
+- [x] `docs/module-contracts.md` - ModuleInput/ModuleOutput schemas and examples
+- [x] `docs/module-registration.md` - How to register modules in Cosmos DB
+- [x] `README.md` - Architecture diagrams, execution flow, and project overview
 - [x] `CLAUDE.md` - Project instructions for Claude Code
 - [x] `PLAN.md` - Implementation roadmap
 - [x] `OptimizationAgent.md` - Original design document
@@ -74,6 +79,7 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Added comprehensive documentation - `module-contracts.md` (ModuleInput/ModuleOutput schemas), `module-registration.md` (Cosmos DB registration guide). Updated README with architecture diagrams, expanded execution flow showing AI agent reasoning, and project overview.
 - **2026-01-10:** Completed Phase 3 Data Layer - added `function_app.py` with HTTP triggers for all endpoints (`/api/get-module-registry`, `/api/save-findings`, `/api/get-findings-history`, `/api/get-subscription-owners`, `/api/abandoned-resources`, `/api/health`). Created data_layer module with 4 functions. Added `get_all_modules()` and `get_findings_by_subscription_and_status()` to CosmosClient. Created seed data files for module registry and sample subscription owners.
 - **2026-01-10:** Ran `/scrub` - removed 2 unused imports (PartitionKey, get_confidence_level), fixed load balancer KQL query (`== null` → `isnull()`), added `from __future__ import annotations` for Python 3.9 compatibility. All ruff checks pass. Verified live detection against Azure subscription - found 1 unused public IP. Phase 4 complete.
 - **2026-01-10:** Completed `detector.py` - main detection orchestration that wires together queries, confidence scoring, and cost estimation. Implements module interface contract (ModuleInput → ModuleOutput). Added `detect()` and `detect_from_dict()` entry points. Also exported `ModuleSummary` from shared library.
