@@ -41,12 +41,13 @@
 - [x] Test with dry run
 - [x] Test against real subscriptions
 
-## Phase 5: AI Agent Configuration
-- [ ] `src/agent/system_prompt.txt` - Agent instructions
-- [ ] `src/agent/tool_definitions.json` - Tool schemas
-- [ ] `src/agent/run_agent.py` - Orchestration script
-- [ ] Configure AI Foundry project
-- [ ] Test agent tool calls
+## Phase 5: AI Agent Configuration ✅
+- [x] `src/agent/__init__.py` - Module init
+- [x] `src/agent/system_prompt.txt` - Agent instructions with workflow steps and recommendations
+- [x] `src/agent/tool_definitions.json` - OpenAPI-style tool schemas for all endpoints
+- [x] `src/agent/run_agent.py` - Orchestration script for local testing and production
+- [ ] Configure AI Foundry project (manual Azure portal step)
+- [ ] Test agent tool calls (requires deployed infrastructure)
 
 ## Phase 6: Notification Layer
 - [ ] `src/logic-apps/send-optimization-email/workflow.json` - Workflow definition
@@ -80,6 +81,7 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Completed Phase 5 AI Agent Configuration. Created `src/agent/` directory with: `system_prompt.txt` (agent instructions with 6-step workflow), `tool_definitions.json` (OpenAPI-style schemas for all 8 endpoints), and `run_agent.py` (orchestration script using Azure AI Foundry SDK with CLI args for --dry-run and --subscriptions). Remaining manual steps: configure AI Foundry project in Azure portal and test agent tool calls.
 - **2026-01-10:** Added `get-findings-trends` endpoint for month-over-month analysis. Module-agnostic design works for any detection module. Enables AI agent to add historical context to notifications (e.g., "Findings decreased from 50 to 22, great progress!"). Added `get_findings_for_trends()` to CosmosClient. Updated README execution flow and module-contracts.md with trends schema.
 - **2026-01-10:** Added comprehensive documentation - `module-contracts.md` (ModuleInput/ModuleOutput schemas), `module-registration.md` (Cosmos DB registration guide). Updated README with architecture diagrams, expanded execution flow showing AI agent reasoning, and project overview.
 - **2026-01-10:** Completed Phase 3 Data Layer - added `function_app.py` with HTTP triggers for all endpoints (`/api/get-module-registry`, `/api/save-findings`, `/api/get-findings-history`, `/api/get-subscription-owners`, `/api/abandoned-resources`, `/api/health`). Created data_layer module with 4 functions. Added `get_all_modules()` and `get_findings_by_subscription_and_status()` to CosmosClient. Created seed data files for module registry and sample subscription owners.
