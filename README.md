@@ -139,6 +139,28 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Tool Call Flow
+
+```
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                           AZURE AI FOUNDRY AGENT (GPT-4o)                      │
+│                                                                                │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
+│  │  Timer   │    │   Get    │    │   Run    │    │   Save   │    │   Send   │  │
+│  │ Trigger  │───►│ Modules  │───►│Detection │───►│ Findings │───►│  Email   │  │
+│  │(Monthly) │    │          │    │          │    │          │    │          │  │
+│  └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
+│                       │               │               │               │        │
+│                  Tool Call       Tool Call       Tool Call       Tool Call     │
+└──────────────────────┬───────────────┬───────────────┬───────────────┬─────────┘
+                       │               │               │               │
+                       ▼               ▼               ▼               ▼
+                  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐
+                  │ Cosmos  │    │ Resource │    │ Cosmos  │    │  Logic   │
+                  │   DB    │    │  Graph   │    │   DB    │    │   App    │
+                  └─────────┘    └──────────┘    └─────────┘    └──────────┘
+```
+
 ### What the Agent Receives and Analyzes
 
 After each detection run, the agent receives a full `ModuleOutput` containing:
@@ -254,6 +276,7 @@ python scripts/test_detector_live.py --all-types
 
 | Document | Description |
 |----------|-------------|
+| [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment instructions |
 | [Design Document](OptimizationAgent.md) | Full architecture and specifications |
 | [Module Contracts](docs/module-contracts.md) | Input/output schemas for detection modules |
 | [Module Registration](docs/module-registration.md) | How to register modules in Cosmos DB |

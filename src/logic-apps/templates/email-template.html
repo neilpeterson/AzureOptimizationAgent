@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Optimization Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .header {
+            border-bottom: 3px solid #0078d4;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            color: #0078d4;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        .summary-box {
+            background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .summary-box h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .summary-stats {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .stat {
+            text-align: center;
+            padding: 10px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .trend-box {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+        .trend-improving {
+            background-color: #dff6dd;
+            border-left: 4px solid #107c10;
+        }
+        .trend-worsening {
+            background-color: #fed9cc;
+            border-left: 4px solid #d13438;
+        }
+        .trend-stable {
+            background-color: #fff4ce;
+            border-left: 4px solid #ffb900;
+        }
+        .trend-box h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        .trend-box p {
+            margin: 0;
+            font-size: 14px;
+        }
+        .findings-section {
+            margin-bottom: 25px;
+        }
+        .findings-section h2 {
+            color: #333;
+            font-size: 18px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .finding {
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0078d4;
+        }
+        .finding.severity-critical {
+            border-left-color: #d13438;
+        }
+        .finding.severity-high {
+            border-left-color: #ff8c00;
+        }
+        .finding.severity-medium {
+            border-left-color: #ffb900;
+        }
+        .finding.severity-low {
+            border-left-color: #107c10;
+        }
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .finding-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+        .finding-cost {
+            background-color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #d13438;
+        }
+        .finding-details {
+            font-size: 13px;
+            color: #666;
+        }
+        .finding-details p {
+            margin: 5px 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-critical { background-color: #fde7e9; color: #d13438; }
+        .badge-high { background-color: #fff4ce; color: #8a6914; }
+        .badge-medium { background-color: #fff4ce; color: #8a6914; }
+        .badge-low { background-color: #dff6dd; color: #107c10; }
+        .recommendation {
+            background-color: #f0f6ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .recommendation strong {
+            color: #0078d4;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #0078d4;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .cta-button:hover {
+            background-color: #106ebe;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Azure Optimization Report</h1>
+            <div class="subtitle">
+                Subscription: {{subscriptionName}} ({{subscriptionId}})
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <h2>Monthly Summary</h2>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="stat-value">{{findingsCount}}</div>
+                    <div class="stat-label">Optimization Opportunities</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${{totalEstimatedMonthlyCost}}</div>
+                    <div class="stat-label">Potential Monthly Savings</div>
+                </div>
+            </div>
+        </div>
+
+        {{#if trends}}
+        <div class="trend-box trend-{{trends.trend}}">
+            <h3>Trend Analysis</h3>
+            <p>{{trends.message}}</p>
+        </div>
+        {{/if}}
+
+        <div class="findings-section">
+            <h2>Findings by Priority</h2>
+
+            {{#each findings}}
+            <div class="finding severity-{{severity}}">
+                <div class="finding-header">
+                    <div class="finding-title">{{resourceName}}</div>
+                    <div class="finding-cost">${{estimatedMonthlyCost}}/mo</div>
+                </div>
+                <div class="finding-details">
+                    <p><strong>Resource Type:</strong> {{resourceType}}</p>
+                    <p><strong>Resource Group:</strong> {{resourceGroup}}</p>
+                    <p><strong>Location:</strong> {{location}}</p>
+                    <p>
+                        <span class="badge badge-{{severity}}">{{severity}}</span>
+                        <span style="margin-left: 8px;">Confidence: {{confidenceScore}}%</span>
+                    </p>
+                </div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> {{recommendation}}
+                </div>
+            </div>
+            {{/each}}
+        </div>
+
+        <div style="text-align: center;">
+            <a href="https://portal.azure.com/#@/resource/subscriptions/{{subscriptionId}}/overview" class="cta-button">
+                View in Azure Portal
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>This report was generated by the Azure Optimization Agent.</p>
+            <p>For questions or feedback, contact your Cloud Platform Team.</p>
+            <p style="margin-top: 15px; font-size: 11px; color: #999;">
+                Report generated: {{generatedAt}}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

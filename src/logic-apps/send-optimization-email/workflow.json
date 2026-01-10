@@ -1,0 +1,165 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {},
+        "triggers": {
+            "When_a_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "ownerEmail": {
+                                "type": "string",
+                                "description": "Email address of the subscription owner"
+                            },
+                            "ownerName": {
+                                "type": "string",
+                                "description": "Display name of the owner"
+                            },
+                            "subscriptionId": {
+                                "type": "string",
+                                "description": "Azure subscription ID"
+                            },
+                            "subscriptionName": {
+                                "type": "string",
+                                "description": "Azure subscription display name"
+                            },
+                            "findings": {
+                                "type": "array",
+                                "description": "Array of optimization findings",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "findingId": { "type": "string" },
+                                        "resourceName": { "type": "string" },
+                                        "resourceType": { "type": "string" },
+                                        "resourceGroup": { "type": "string" },
+                                        "location": { "type": "string" },
+                                        "severity": { "type": "string" },
+                                        "confidenceScore": { "type": "number" },
+                                        "estimatedMonthlyCost": { "type": "number" },
+                                        "recommendation": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "trends": {
+                                "type": "object",
+                                "description": "Trend analysis data",
+                                "properties": {
+                                    "trend": { "type": "string" },
+                                    "message": { "type": "string" },
+                                    "findingsChange": { "type": "integer" },
+                                    "findingsChangePercent": { "type": "number" }
+                                }
+                            },
+                            "totalEstimatedMonthlyCost": {
+                                "type": "number",
+                                "description": "Total estimated monthly cost of all findings"
+                            }
+                        },
+                        "required": ["ownerEmail", "subscriptionId", "findings"]
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Initialize_findingsHtml": {
+                "type": "InitializeVariable",
+                "runAfter": {},
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "findingsHtml",
+                            "type": "string",
+                            "value": ""
+                        }
+                    ]
+                }
+            },
+            "For_each_finding": {
+                "type": "Foreach",
+                "runAfter": {
+                    "Initialize_findingsHtml": ["Succeeded"]
+                },
+                "foreach": "@triggerBody()?['findings']",
+                "actions": {
+                    "Append_finding_to_html": {
+                        "type": "AppendToStringVariable",
+                        "inputs": {
+                            "name": "findingsHtml",
+                            "value": "<div style=\"background-color: #f9f9f9; border-radius: 6px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #0078d4;\"><div style=\"display: flex; justify-content: space-between; margin-bottom: 10px;\"><div style=\"font-weight: 600; font-size: 14px;\">@{items('For_each_finding')?['resourceName']}</div><div style=\"background-color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 13px; color: #d13438;\">$@{items('For_each_finding')?['estimatedMonthlyCost']}/mo</div></div><div style=\"font-size: 13px; color: #666;\"><p style=\"margin: 5px 0;\"><strong>Resource Type:</strong> @{items('For_each_finding')?['resourceType']}</p><p style=\"margin: 5px 0;\"><strong>Resource Group:</strong> @{items('For_each_finding')?['resourceGroup']}</p><p style=\"margin: 5px 0;\"><strong>Location:</strong> @{items('For_each_finding')?['location']}</p><p style=\"margin: 5px 0;\"><strong>Severity:</strong> @{items('For_each_finding')?['severity']} | <strong>Confidence:</strong> @{items('For_each_finding')?['confidenceScore']}%</p></div><div style=\"background-color: #f0f6ff; border-radius: 4px; padding: 10px; margin-top: 10px; font-size: 13px;\"><strong style=\"color: #0078d4;\">Recommendation:</strong> @{items('For_each_finding')?['recommendation']}</div></div>"
+                        }
+                    }
+                }
+            },
+            "Compose_trend_message": {
+                "type": "Compose",
+                "runAfter": {
+                    "For_each_finding": ["Succeeded"]
+                },
+                "inputs": "@if(equals(triggerBody()?['trends'], null), '', triggerBody()?['trends']?['message'])"
+            },
+            "Send_an_email_V2": {
+                "type": "ApiConnection",
+                "runAfter": {
+                    "Compose_trend_message": ["Succeeded"]
+                },
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['office365']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail",
+                    "body": {
+                        "To": "@{triggerBody()?['ownerEmail']}",
+                        "Subject": "Azure Optimization Report - @{triggerBody()?['subscriptionName']} - @{length(triggerBody()?['findings'])} Opportunities Found",
+                        "Body": "<html><head><style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;color:#333;max-width:800px;margin:0 auto;padding:20px;background-color:#f5f5f5}.container{background-color:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);padding:30px}.header{border-bottom:3px solid #0078d4;padding-bottom:20px;margin-bottom:25px}.header h1{color:#0078d4;margin:0 0 10px;font-size:24px}.summary-box{background:linear-gradient(135deg,#0078d4 0%,#106ebe 100%);color:#fff;padding:20px;border-radius:8px;margin-bottom:25px;text-align:center}.stat-value{font-size:28px;font-weight:700}.stat-label{font-size:12px;opacity:.9}</style></head><body><div class=\"container\"><div class=\"header\"><h1>Azure Optimization Report</h1><div style=\"color:#666;font-size:14px\">Subscription: @{triggerBody()?['subscriptionName']} (@{triggerBody()?['subscriptionId']})</div></div><div class=\"summary-box\"><div style=\"display:inline-block;margin:0 30px\"><div class=\"stat-value\">@{length(triggerBody()?['findings'])}</div><div class=\"stat-label\">Optimization Opportunities</div></div><div style=\"display:inline-block;margin:0 30px\"><div class=\"stat-value\">$@{triggerBody()?['totalEstimatedMonthlyCost']}</div><div class=\"stat-label\">Potential Monthly Savings</div></div></div>@{if(equals(outputs('Compose_trend_message'), ''), '', concat('<div style=\"padding:15px;border-radius:6px;margin-bottom:25px;background-color:#f0f6ff;border-left:4px solid #0078d4\"><p style=\"margin:0;font-size:14px\">', outputs('Compose_trend_message'), '</p></div>'))}<h2 style=\"color:#333;font-size:18px;border-bottom:1px solid #eee;padding-bottom:10px\">Findings by Priority</h2>@{variables('findingsHtml')}<div style=\"text-align:center;margin-top:20px\"><a href=\"https://portal.azure.com/#@/resource/subscriptions/@{triggerBody()?['subscriptionId']}/overview\" style=\"display:inline-block;background-color:#0078d4;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:600\">View in Azure Portal</a></div><div style=\"margin-top:30px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#666;text-align:center\"><p>This report was generated by the Azure Optimization Agent.</p><p>For questions or feedback, contact your Cloud Platform Team.</p></div></div></body></html>",
+                        "Importance": "Normal"
+                    }
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "runAfter": {
+                    "Send_an_email_V2": ["Succeeded"]
+                },
+                "inputs": {
+                    "statusCode": 200,
+                    "body": {
+                        "status": "sent",
+                        "recipient": "@{triggerBody()?['ownerEmail']}",
+                        "subscriptionId": "@{triggerBody()?['subscriptionId']}",
+                        "findingsCount": "@{length(triggerBody()?['findings'])}"
+                    }
+                }
+            },
+            "Response_Error": {
+                "type": "Response",
+                "runAfter": {
+                    "Send_an_email_V2": ["Failed", "TimedOut"]
+                },
+                "inputs": {
+                    "statusCode": 500,
+                    "body": {
+                        "status": "failed",
+                        "error": "Failed to send email",
+                        "recipient": "@{triggerBody()?['ownerEmail']}"
+                    }
+                }
+            }
+        },
+        "outputs": {}
+    },
+    "parameters": {
+        "$connections": {
+            "defaultValue": {},
+            "type": "Object"
+        }
+    }
+}
