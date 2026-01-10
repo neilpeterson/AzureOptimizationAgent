@@ -1,10 +1,10 @@
-# Supply Chain Azure Optimization Agent
+# Azure Optimization Agent
 
 ## Solution Overview
 
 Managing Azure costs across 200 subscriptions is complex. Service teams often leave orphaned resources (unattached disks, unused public IPs, empty load balancers) that accumulate cost without providing value. Manual identification is time-consuming and error-prone.
 
-The **Supply Chain Azure Optimization Agent** is an agentic solution that automatically identifies cost optimization opportunities, detects spending trends, and delivers personalized monthly recommendations to subscription owners.
+The **Azure Optimization Agent** is an agentic solution that automatically identifies cost optimization opportunities, detects spending trends, and delivers personalized monthly recommendations to subscription owners.
 
 The solution automates cost optimization through:
 
@@ -54,7 +54,7 @@ The **Detection Layer** is externally focused—it queries Azure Resource Graph 
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                              AZURE AI FOUNDRY PROJECT                           │
 │  ┌───────────────────────────────────────────────────────────────────────────┐  │
-│  │                      SCE Azure Optimization Agent                         │  │
+│  │                      Azure Optimization Agent                             │  │
 │  │                                                                           │  │
 │  │  Model: GPT-4o                                                            │  │
 │  │  Role: Synthesize findings, prioritize, generate recommendations          │  │
@@ -117,7 +117,7 @@ The **Detection Layer** is externally focused—it queries Azure Resource Graph 
 
 ## Modularity Framework
 
-A core design principle of the SCE Azure Optimization Agent is **modularity**. Optimization capabilities are implemented as independent, pluggable modules that can be added, removed, or modified without affecting the core system.
+A core design principle of the Azure Optimization Agent is **modularity**. Optimization capabilities are implemented as independent, pluggable modules that can be added, removed, or modified without affecting the core system.
 
 ### Module Architecture
 
@@ -127,7 +127,7 @@ A core design principle of the SCE Azure Optimization Agent is **modularity**. O
   "moduleName": "Abandoned Resources Detector",
   "version": "1.0.0",
   "enabled": true,
-  "functionEndpoint": "https://func-sce-detect.azurewebsites.net/api/...",
+  "functionEndpoint": "https://func-optimization.azurewebsites.net/api/...",
   "schedule": "monthly",
   "category": "cost-optimization",
   "description": "Detects orphaned resources that incur unnecessary cost",
@@ -373,7 +373,7 @@ All modules output findings using this standardized schema:
 
 ```json
 {
-  "$schema": "https://sce.internal/schemas/finding-v1.json",
+  "$schema": "https://schemas.internal/finding-v1.json",
   "type": "object",
   "required": ["findingId", "subscriptionId", "resourceId", "resourceType", "category", "severity", "incursCost"],
   "properties": {
@@ -502,7 +502,7 @@ The agent connects to the following tools:
 ### System Prompt
 
 ```
-You are the SCE Azure Optimization Agent, an expert in Azure cost optimization. Your role is to:
+You are the Azure Optimization Agent, an expert in Azure cost optimization. Your role is to:
 
 1. ANALYZE findings from optimization modules across 200 Azure subscriptions
 2. PRIORITIZE findings by cost impact and confidence level
@@ -675,7 +675,7 @@ The notification system uses Azure Logic Apps to send monthly optimization repor
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
-│  [SCE Logo]                                                                 │
+│  [Logo]                                                                     │
 │                                                                             │
 │  AZURE COST OPTIMIZATION REPORT                                             │
 │  Subscription: Contoso Production 01                                        │
@@ -724,7 +724,7 @@ The notification system uses Azure Logic Apps to send monthly optimization repor
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Questions? Contact the FinOps team at finops@sce.internal                  │
+│  Questions? Contact the FinOps team at finops@contoso.com                   │
 │                                                                             │
 │  [Unsubscribe] — Note: This is a mandatory compliance report.               │
 │                  Contact FinOps to discuss frequency changes.               │
@@ -779,7 +779,7 @@ To query all 200 subscriptions efficiently:
 3. Azure Resource Graph queries automatically span all child subscriptions
 
 ```
-Management Group: "SCE-All-Subscriptions"
+Management Group: "All-Subscriptions"
 ├── Subscription: Contoso-Prod-01
 ├── Subscription: Contoso-Prod-02
 ├── Subscription: Contoso-Dev-01
@@ -834,7 +834,7 @@ Management Group: "SCE-All-Subscriptions"
   "status": "active",
   "category": "cost-optimization",
   "description": "Detects orphaned Azure resources that incur unnecessary cost",
-  "functionApp": "func-sce-optimization",
+  "functionApp": "func-optimization",
   "functionName": "DetectAbandonedResources",
   "schedule": "monthly",
   "outputSchema": "v1-standard-findings",
@@ -1095,7 +1095,7 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 
 ### Multi-Agent Evolution
 
-The SCE Azure Optimization Agent is designed as the foundation for a multi-agent system. Future agents may include:
+The Azure Optimization Agent is designed as the foundation for a multi-agent system. Future agents may include:
 
 | Agent | Purpose | Interaction |
 |-------|---------|-------------|
