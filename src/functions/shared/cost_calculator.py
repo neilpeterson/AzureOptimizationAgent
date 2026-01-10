@@ -6,6 +6,8 @@ resource pricing, VM right-sizing savings) should be implemented within
 each detection module.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from shared.models import Severity

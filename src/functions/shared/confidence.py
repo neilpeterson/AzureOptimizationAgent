@@ -5,6 +5,8 @@ confidence logic (e.g., abandoned resources, overprovisioned VMs) should
 be implemented within each detection module.
 """
 
+from __future__ import annotations
+
 from shared.models import ConfidenceLevel
 
 

@@ -5,6 +5,8 @@ resources. It uses the generic severity classification from shared.cost_calculat
 and applies resource-type-specific pricing.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 
