@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement a three-layer agentic solution that identifies cost optimization opportunities across 200 Azure subscriptions and delivers personalized monthly recommendations to subscription owners.
+Implement a three-layer agentic solution that identifies cost optimization opportunities across Azure subscriptions and delivers personalized monthly recommendations to subscription owners.
 
 **Architecture:** Detection Layer → Data Layer → Notification Layer (orchestrated by Azure AI Foundry Agent with GPT-4o)
 
@@ -29,10 +29,15 @@ OptimizationAgent/
 │   │   │   ├── get_module_registry.py
 │   │   │   ├── save_findings.py
 │   │   │   ├── get_findings_history.py
+│   │   │   ├── get_findings_trends.py
 │   │   │   └── get_subscription_owners.py
 │   │   └── detection_layer/
-│   │       ├── abandoned_resources.py
-│   │       └── queries/            # Resource Graph KQL queries
+│   │       └── abandoned_resources/
+│   │           ├── detector.py     # Main detection logic
+│   │           ├── queries.py      # KQL queries
+│   │           ├── config.py       # Module configuration
+│   │           ├── confidence.py   # Module-specific confidence
+│   │           └── cost_calculator.py
 │   ├── agent/
 │   │   ├── system_prompt.txt
 │   │   ├── tool_definitions.json
@@ -94,22 +99,29 @@ OptimizationAgent/
 |------|----------|---------|
 | `data_layer/get_module_registry.py` | `GET /api/get-module-registry` | List enabled modules |
 | `data_layer/save_findings.py` | `POST /api/save-findings` | Store findings |
-| `data_layer/get_findings_history.py` | `GET /api/get-findings-history` | Trend analysis |
+| `data_layer/get_findings_history.py` | `GET /api/get-findings-history` | Query historical findings |
+| `data_layer/get_findings_trends.py` | `GET /api/get-findings-trends` | Month-over-month trends |
 | `data_layer/get_subscription_owners.py` | `POST /api/get-subscription-owners` | Owner lookup |
 
 ### Phase 4: Detection Layer
 
 | File | Purpose |
 |------|---------|
-| `detection_layer/abandoned_resources.py` | Main module implementing interface contract |
-| `detection_layer/queries/unattached_disks.py` | KQL for orphaned managed disks |
-| `detection_layer/queries/unused_public_ips.py` | KQL for standard IPs without ipConfiguration |
-| `detection_layer/queries/empty_load_balancers.py` | KQL for LBs without backend pools |
-| `detection_layer/queries/orphaned_nat_gateways.py` | KQL for NAT gateways without subnets |
-| `detection_layer/queries/empty_sql_elastic_pools.py` | KQL for pools without databases |
-| `detection_layer/queries/unused_vnet_gateways.py` | KQL for gateways without connections |
-| `detection_layer/queries/orphaned_ddos_plans.py` | KQL for DDoS plans without VNets |
-| `detection_layer/queries/disconnected_private_endpoints.py` | KQL for unconnected PEs |
+| `detection_layer/abandoned_resources/detector.py` | Main module implementing interface contract |
+| `detection_layer/abandoned_resources/queries.py` | KQL queries for 8 resource types |
+| `detection_layer/abandoned_resources/config.py` | Module configuration schema |
+| `detection_layer/abandoned_resources/confidence.py` | Module-specific confidence scoring |
+| `detection_layer/abandoned_resources/cost_calculator.py` | Module-specific cost estimation |
+
+**Supported Resource Types:**
+- Unattached managed disks
+- Unused public IPs (Standard SKU)
+- Empty load balancers
+- Orphaned NAT gateways
+- Empty SQL elastic pools
+- Unused VNet gateways
+- Orphaned DDoS plans
+- Disconnected private endpoints
 
 **Module Interface Contract:**
 ```python

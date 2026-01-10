@@ -1,0 +1,239 @@
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_module_registry",
+        "description": "Get all enabled detection modules from the registry. Returns list of modules with their configuration.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "include_disabled": {
+              "type": "boolean",
+              "description": "Include disabled modules in the response (default: false)"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_findings",
+        "description": "Save detection findings to the findings-history database for tracking and trend analysis.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "executionId": {
+              "type": "string",
+              "description": "Unique execution identifier (format: exec-YYYY-MM-DD-NNN)"
+            },
+            "moduleId": {
+              "type": "string",
+              "description": "Module that generated the findings (e.g., 'abandoned-resources')"
+            },
+            "findings": {
+              "type": "array",
+              "description": "Array of finding objects from the detection module",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "required": ["executionId", "moduleId", "findings"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_findings_history",
+        "description": "Query historical findings for a specific subscription. Useful for detailed analysis.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "subscription_id": {
+              "type": "string",
+              "description": "Azure subscription ID to query"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of findings to return (default: 100)"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["open", "resolved"],
+              "description": "Filter by finding status"
+            }
+          },
+          "required": ["subscription_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_findings_trends",
+        "description": "Get month-over-month trend analysis for a detection module. Returns aggregated data showing if findings are improving, worsening, or stable.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "module_id": {
+              "type": "string",
+              "description": "Module ID to get trends for (e.g., 'abandoned-resources', 'overprovisioned-vms')"
+            },
+            "months": {
+              "type": "integer",
+              "description": "Number of months of history to analyze (default: 3)"
+            },
+            "subscription_id": {
+              "type": "string",
+              "description": "Optional: filter trends to a specific subscription"
+            }
+          },
+          "required": ["module_id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_subscription_owners",
+        "description": "Look up owner contact information for one or more subscriptions. Returns email addresses and names for sending notifications.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "subscriptionIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of Azure subscription IDs to look up"
+            }
+          },
+          "required": ["subscriptionIds"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "abandoned_resources",
+        "description": "Run the abandoned resources detection module. Scans subscriptions for orphaned resources like unattached disks, unused public IPs, empty load balancers, etc.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "executionId": {
+              "type": "string",
+              "description": "Unique execution identifier (format: exec-YYYY-MM-DD-NNN)"
+            },
+            "subscriptionIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of Azure subscription IDs to scan"
+            },
+            "configuration": {
+              "type": "object",
+              "description": "Optional module-specific configuration overrides",
+              "properties": {
+                "resourceTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Resource types to scan (e.g., 'microsoft.compute/disks')"
+                },
+                "minimumOrphanAgeDays": {
+                  "type": "integer",
+                  "description": "Minimum days a resource must be orphaned (default: 7)"
+                }
+              }
+            },
+            "dryRun": {
+              "type": "boolean",
+              "description": "If true, detect but don't persist findings (default: false)"
+            }
+          },
+          "required": ["executionId", "subscriptionIds"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_optimization_email",
+        "description": "Send a personalized optimization report email to a subscription owner via the Logic App.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ownerEmail": {
+              "type": "string",
+              "description": "Email address of the subscription owner"
+            },
+            "ownerName": {
+              "type": "string",
+              "description": "Display name of the owner (for personalization)"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "description": "Azure subscription ID"
+            },
+            "subscriptionName": {
+              "type": "string",
+              "description": "Display name of the subscription"
+            },
+            "findings": {
+              "type": "array",
+              "description": "Array of findings for this subscription",
+              "items": {
+                "type": "object"
+              }
+            },
+            "trends": {
+              "type": "object",
+              "description": "Trend summary for context (from get_findings_trends)",
+              "properties": {
+                "trend": {
+                  "type": "string",
+                  "enum": ["improving", "worsening", "stable"]
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Human-readable trend message"
+                },
+                "findingsChange": {
+                  "type": "integer",
+                  "description": "Change in finding count"
+                },
+                "findingsChangePercent": {
+                  "type": "number",
+                  "description": "Percentage change"
+                }
+              }
+            },
+            "totalEstimatedMonthlyCost": {
+              "type": "number",
+              "description": "Total estimated monthly cost of all findings"
+            }
+          },
+          "required": ["ownerEmail", "subscriptionId", "findings"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "health_check",
+        "description": "Check if the optimization agent service is healthy and responding.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ]
+}
