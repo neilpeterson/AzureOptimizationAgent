@@ -139,6 +139,27 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Tool Call Flow
+
+```
+Timer Trigger
+     │
+     ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  GET /module-   │───►│ POST /abandoned-│───►│ POST /save-     │
+│  registry       │    │ resources       │    │ findings        │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                      │
+     ┌────────────────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ GET /findings-  │───►│ POST /get-      │───►│ POST /send-     │
+│ trends          │    │ subscription-   │    │ optimization-   │
+│                 │    │ owners          │    │ email           │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
 ### What the Agent Receives and Analyzes
 
 After each detection run, the agent receives a full `ModuleOutput` containing:
