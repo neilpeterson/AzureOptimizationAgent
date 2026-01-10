@@ -13,6 +13,7 @@ import azure.functions as func
 from data_layer.get_module_registry import get_module_registry
 from data_layer.save_findings import save_findings
 from data_layer.get_findings_history import get_findings_history
+from data_layer.get_findings_trends import get_findings_trends
 from data_layer.get_subscription_owners import get_subscription_owners
 from detection_layer.abandoned_resources import detect_from_dict
 
@@ -150,6 +151,68 @@ def get_findings_history_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
     except Exception as e:
         logger.exception("Error getting findings history")
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500,
+        )
+
+
+@app.route(route="get-findings-trends", methods=["GET"])
+def get_findings_trends_handler(req: func.HttpRequest) -> func.HttpResponse:
+    """Get month-over-month findings trends for any detection module.
+
+    GET /api/get-findings-trends
+    Query params:
+        - module_id: str (required) - Module ID (e.g., 'abandoned-resources')
+        - months: int (optional) - Number of months to analyze (default: 3)
+        - subscription_id: str (optional) - Filter to specific subscription
+
+    Returns:
+        200: Trend data with monthly aggregates and change summary
+        400: Missing required parameters
+        500: Error response
+
+    Example response:
+        {
+            "moduleId": "abandoned-resources",
+            "trends": [
+                {"month": "2026-01", "totalFindings": 22, "totalCost": 850.00, ...},
+                {"month": "2025-12", "totalFindings": 50, "totalCost": 1920.00, ...}
+            ],
+            "summary": {
+                "hasComparison": true,
+                "findingsChange": -28,
+                "findingsChangePercent": -56.0,
+                "trend": "improving",
+                "message": "Great progress! Findings decreased from 50 to 22..."
+            }
+        }
+    """
+    module_id = req.params.get("module_id")
+    if not module_id:
+        return func.HttpResponse(
+            json.dumps({"error": "module_id is required"}),
+            mimetype="application/json",
+            status_code=400,
+        )
+
+    try:
+        months = int(req.params.get("months", "3"))
+        subscription_id = req.params.get("subscription_id")
+
+        result = get_findings_trends(
+            module_id=module_id,
+            months=months,
+            subscription_id=subscription_id,
+        )
+        return func.HttpResponse(
+            json.dumps(result, default=str),
+            mimetype="application/json",
+            status_code=200,
+        )
+    except Exception as e:
+        logger.exception("Error getting findings trends")
         return func.HttpResponse(
             json.dumps({"error": str(e)}),
             mimetype="application/json",

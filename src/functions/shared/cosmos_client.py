@@ -211,3 +211,61 @@ class CosmosClient:
         return list(
             container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
         )
+
+    # Trends operations
+    def get_findings_for_trends(
+        self,
+        module_id: str,
+        from_date: str,
+        to_date: str,
+        subscription_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get findings for trend analysis within a date range.
+
+        Args:
+            module_id: Module ID to filter by (e.g., 'abandoned-resources')
+            from_date: Start date (ISO format, e.g., '2025-12-01')
+            to_date: End date (ISO format, e.g., '2026-01-31')
+            subscription_id: Optional subscription ID to filter by
+
+        Returns:
+            List of findings with executionDate, estimatedMonthlyCost, severity, resourceType
+        """
+        container = self._get_container(self.FINDINGS_HISTORY)
+
+        if subscription_id:
+            query = """
+                SELECT c.executionDate, c.estimatedMonthlyCost, c.severity,
+                       c.resourceType, c.subscriptionId, c.findingId
+                FROM c
+                WHERE c.moduleId = @moduleId
+                  AND c.subscriptionId = @subscriptionId
+                  AND c.executionDate >= @fromDate
+                  AND c.executionDate <= @toDate
+            """
+            parameters = [
+                {"name": "@moduleId", "value": module_id},
+                {"name": "@subscriptionId", "value": subscription_id},
+                {"name": "@fromDate", "value": from_date},
+                {"name": "@toDate", "value": to_date},
+            ]
+            return list(
+                container.query_items(query, parameters=parameters, partition_key=subscription_id)
+            )
+        else:
+            query = """
+                SELECT c.executionDate, c.estimatedMonthlyCost, c.severity,
+                       c.resourceType, c.subscriptionId, c.findingId
+                FROM c
+                WHERE c.moduleId = @moduleId
+                  AND c.executionDate >= @fromDate
+                  AND c.executionDate <= @toDate
+            """
+            parameters = [
+                {"name": "@moduleId", "value": module_id},
+                {"name": "@fromDate", "value": from_date},
+                {"name": "@toDate", "value": to_date},
+            ]
+            return list(
+                container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
+            )

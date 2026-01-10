@@ -24,6 +24,7 @@
 - [x] `src/functions/data_layer/get_module_registry.py`
 - [x] `src/functions/data_layer/save_findings.py`
 - [x] `src/functions/data_layer/get_findings_history.py`
+- [x] `src/functions/data_layer/get_findings_trends.py` - Month-over-month trend analysis (module-agnostic)
 - [x] `src/functions/data_layer/get_subscription_owners.py`
 - [x] `data/seed/module-registry.json` - Seed data for abandoned-resources module
 - [x] `data/seed/subscription-owners.sample.json` - Sample owner mappings
@@ -79,6 +80,7 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Added `get-findings-trends` endpoint for month-over-month analysis. Module-agnostic design works for any detection module. Enables AI agent to add historical context to notifications (e.g., "Findings decreased from 50 to 22, great progress!"). Added `get_findings_for_trends()` to CosmosClient. Updated README execution flow and module-contracts.md with trends schema.
 - **2026-01-10:** Added comprehensive documentation - `module-contracts.md` (ModuleInput/ModuleOutput schemas), `module-registration.md` (Cosmos DB registration guide). Updated README with architecture diagrams, expanded execution flow showing AI agent reasoning, and project overview.
 - **2026-01-10:** Completed Phase 3 Data Layer - added `function_app.py` with HTTP triggers for all endpoints (`/api/get-module-registry`, `/api/save-findings`, `/api/get-findings-history`, `/api/get-subscription-owners`, `/api/abandoned-resources`, `/api/health`). Created data_layer module with 4 functions. Added `get_all_modules()` and `get_findings_by_subscription_and_status()` to CosmosClient. Created seed data files for module registry and sample subscription owners.
 - **2026-01-10:** Ran `/scrub` - removed 2 unused imports (PartitionKey, get_confidence_level), fixed load balancer KQL query (`== null` → `isnull()`), added `from __future__ import annotations` for Python 3.9 compatibility. All ruff checks pass. Verified live detection against Azure subscription - found 1 unused public IP. Phase 4 complete.
