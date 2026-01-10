@@ -5,6 +5,8 @@ resources detection. The configuration is stored in Cosmos DB as part
 of the ModuleRegistry document and validated when the module is invoked.
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from shared.models import ConfidenceThresholds

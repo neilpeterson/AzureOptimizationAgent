@@ -4,6 +4,8 @@ This module contains all KQL queries used to detect orphaned Azure resources
 that incur cost but provide no value.
 """
 
+from __future__ import annotations
+
 
 def query_unattached_disks() -> str:
     """KQL query for unattached managed disks."""
@@ -52,7 +54,7 @@ Resources
 | where type =~ 'microsoft.network/loadbalancers'
 | where sku.name == 'Standard'
 | where array_length(properties.backendAddressPools) == 0
-    or properties.backendAddressPools[0].properties.backendIPConfigurations == null
+    or isnull(properties.backendAddressPools[0].properties.backendIPConfigurations)
     or array_length(properties.backendAddressPools[0].properties.backendIPConfigurations) == 0
 | project
     id,

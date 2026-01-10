@@ -1,6 +1,6 @@
 # Implementation Status
 
-> Last Updated: 2026-01-09
+> Last Updated: 2026-01-10
 
 ## Phase 1: Infrastructure ✅
 - [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP
@@ -29,16 +29,16 @@
 - [ ] `data/seed/subscription-owners.sample.json` - Sample data
 - [ ] Integration tests
 
-## Phase 4: Detection Layer (Started)
+## Phase 4: Detection Layer ✅
 - [x] `src/functions/detection_layer/__init__.py`
 - [x] `src/functions/detection_layer/abandoned_resources/__init__.py`
 - [x] `src/functions/detection_layer/abandoned_resources/confidence.py` - Module-specific confidence scoring
 - [x] `src/functions/detection_layer/abandoned_resources/cost_calculator.py` - Module-specific cost estimation
 - [x] `src/functions/detection_layer/abandoned_resources/queries.py` - KQL queries for 8 resource types
 - [x] `src/functions/detection_layer/abandoned_resources/config.py` - Module-specific configuration schema
-- [ ] `src/functions/detection_layer/abandoned_resources/detector.py` - Main detection logic
-- [ ] Test with dry run
-- [ ] Test against real subscriptions
+- [x] `src/functions/detection_layer/abandoned_resources/detector.py` - Main detection logic
+- [x] Test with dry run
+- [x] Test against real subscriptions
 
 ## Phase 5: AI Agent Configuration
 - [ ] `src/agent/system_prompt.txt` - Agent instructions
@@ -74,6 +74,8 @@
 - None yet
 
 ## Notes
+- **2026-01-10:** Ran `/scrub` - removed 2 unused imports (PartitionKey, get_confidence_level), fixed load balancer KQL query (`== null` → `isnull()`), added `from __future__ import annotations` for Python 3.9 compatibility. All ruff checks pass. Verified live detection against Azure subscription - found 1 unused public IP. Phase 4 complete.
+- **2026-01-10:** Completed `detector.py` - main detection orchestration that wires together queries, confidence scoring, and cost estimation. Implements module interface contract (ModuleInput → ModuleOutput). Added `detect()` and `detect_from_dict()` entry points. Also exported `ModuleSummary` from shared library.
 - **2026-01-09:** Refactored confidence scoring to maintain modularity. Generic utilities in `shared/confidence.py`, module-specific logic (name patterns, tag checks, orphan duration) moved to `detection_layer/abandoned_resources/confidence.py`. Future modules (e.g., Overprovisioned VMs) can implement their own confidence logic.
 - **2026-01-09:** Refactored cost calculator similarly. Generic severity classification and aggregation utilities remain in `shared/cost_calculator.py`. Resource-type-specific pricing (ABANDONED_RESOURCE_COSTS lookup table, estimate_abandoned_resource_cost) moved to `detection_layer/abandoned_resources/cost_calculator.py`.
 - **2026-01-09:** Refactored resource_graph.py. Generic ResourceGraphClient (query, query_batched, query_single) remains in shared. All 8 KQL queries moved to `detection_layer/abandoned_resources/queries.py`. Future modules can define their own queries (e.g., VM metrics queries for overprovisioned detection).

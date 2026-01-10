@@ -1,10 +1,11 @@
 """Cosmos DB client wrapper with managed identity authentication."""
 
+from __future__ import annotations
+
 import os
 from typing import Any
 
 from azure.cosmos import CosmosClient as AzureCosmosClient
-from azure.cosmos import PartitionKey
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 

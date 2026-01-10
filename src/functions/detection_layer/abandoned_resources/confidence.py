@@ -5,10 +5,12 @@ confidence scores. It uses the generic utilities from shared.confidence
 and applies domain-specific rules for orphaned/abandoned resources.
 """
 
+from __future__ import annotations
+
 import re
 from datetime import datetime, timezone
 
-from shared.confidence import clamp_score, get_confidence_level
+from shared.confidence import clamp_score
 from shared.models import ConfidenceLevel
 
 

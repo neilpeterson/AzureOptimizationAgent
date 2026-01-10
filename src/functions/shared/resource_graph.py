@@ -5,6 +5,8 @@ queries. Module-specific queries (e.g., abandoned resource KQL, VM metrics)
 should be implemented within each detection module.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 

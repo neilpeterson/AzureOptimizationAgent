@@ -29,8 +29,21 @@ from detection_layer.abandoned_resources.queries import (
     query_orphaned_ddos_plans,
     query_disconnected_private_endpoints,
 )
+from detection_layer.abandoned_resources.detector import (
+    detect,
+    detect_from_dict,
+    MODULE_ID,
+    MODULE_NAME,
+    MODULE_VERSION,
+)
 
 __all__ = [
+    # Main detection entry points
+    "detect",
+    "detect_from_dict",
+    "MODULE_ID",
+    "MODULE_NAME",
+    "MODULE_VERSION",
     # Configuration
     "AbandonedResourcesConfig",
     "parse_config",
