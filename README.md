@@ -155,28 +155,6 @@ The agent uses this data to:
 - **Recommend**: Suggest remediation actions based on resource type
 - **Summarize**: Create executive summaries of optimization opportunities
 
-### Tool Call Flow
-
-```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│                           AZURE AI FOUNDRY AGENT (GPT-4o)                      │
-│                                                                                │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
-│  │  Timer   │    │   Get    │    │   Run    │    │   Save   │    │   Send   │  │
-│  │ Trigger  │───►│ Modules  │───►│Detection │───►│ Findings │───►│  Email   │  │
-│  │(Monthly) │    │          │    │          │    │          │    │          │  │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
-│                       │               │               │               │        │
-│                  Tool Call       Tool Call       Tool Call       Tool Call     │
-└──────────────────────┬───────────────┬───────────────┬───────────────┬─────────┘
-                       │               │               │               │
-                       ▼               ▼               ▼               ▼
-                  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐
-                  │ Cosmos  │    │ Resource │    │ Cosmos  │    │  Logic   │
-                  │   DB    │    │  Graph   │    │   DB    │    │   App    │
-                  └─────────┘    └──────────┘    └─────────┘    └──────────┘
-```
-
 ## Azure Resources
 
 | Resource | SKU | Purpose |
