@@ -122,3 +122,54 @@ class ResourceGraphClient:
             Query results as list of dictionaries.
         """
         return self.query(query, subscription_ids=[subscription_id])
+
+    def get_subscriptions_in_management_group(
+        self,
+        management_group_id: str,
+    ) -> list[str]:
+        """Get all subscription IDs under a management group.
+
+        Uses Azure Resource Graph to query the management group hierarchy
+        and return all child subscription IDs.
+
+        Args:
+            management_group_id: Management group ID (name, not full resource ID).
+
+        Returns:
+            List of subscription IDs under the management group.
+        """
+        query = """
+            resourcecontainers
+            | where type == 'microsoft.resources/subscriptions'
+            | project subscriptionId
+        """
+
+        results = self.query(query, management_group_id=management_group_id)
+        return [r["subscriptionId"] for r in results]
+
+    def resolve_targets_to_subscriptions(
+        self,
+        subscription_ids: list[str] | None = None,
+        management_group_ids: list[str] | None = None,
+    ) -> list[str]:
+        """Resolve mixed targets (subscriptions + management groups) to subscription IDs.
+
+        Combines directly specified subscription IDs with subscriptions discovered
+        under each management group. Duplicates are removed.
+
+        Args:
+            subscription_ids: Direct subscription IDs to include.
+            management_group_ids: Management group IDs to resolve to subscriptions.
+
+        Returns:
+            Deduplicated list of all subscription IDs.
+        """
+        all_subscription_ids = set(subscription_ids or [])
+
+        for mg_id in management_group_ids or []:
+            logger.info(f"Resolving management group: {mg_id}")
+            mg_subscriptions = self.get_subscriptions_in_management_group(mg_id)
+            logger.info(f"Found {len(mg_subscriptions)} subscriptions in {mg_id}")
+            all_subscription_ids.update(mg_subscriptions)
+
+        return list(all_subscription_ids)

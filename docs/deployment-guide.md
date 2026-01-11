@@ -13,7 +13,7 @@ This guide walks through deploying the Azure Optimization Agent from the command
 
 The Bicep template deploys all required Azure resources:
 - Storage Account
-- Cosmos DB (Serverless) with 4 containers
+- Cosmos DB (Serverless) with 5 containers
 - Function App (Consumption plan, Python 3.11)
 - Logic App (Consumption)
 - Log Analytics Workspace
@@ -85,6 +85,7 @@ az functionapp function list \
 ```
 
 Expected functions:
+- `get-detection-targets`
 - `get-module-registry`
 - `save-findings`
 - `get-findings-history`
@@ -151,11 +152,54 @@ COSMOS_ENDPOINT=$(az cosmosdb show \
 # Use Azure CLI extension or Data Explorer to insert the document
 ```
 
-### 3.2 Seed Subscription Owners
+### 3.2 Seed Detection Targets
+
+Detection targets define which subscriptions and management groups to scan.
+
+1. Copy `data/seed/detection-targets.sample.json`
+2. Update with your actual subscription IDs and/or management group IDs
+3. For each target in your list:
+   - Navigate to **optimization-db** > **detection-targets** in Data Explorer
+   - Click **New Item**
+   - Paste the target document
+   - Click **Save**
+
+Example target document:
+```json
+{
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "targetId": "12345678-1234-1234-1234-123456789abc",
+  "targetType": "subscription",
+  "displayName": "Production Subscription",
+  "enabled": true,
+  "teamName": "Platform Engineering",
+  "ownerEmail": "platform@contoso.com"
+}
+```
+
+For management groups, use `"targetType": "managementGroup"`.
+
+See [Detection Targets & Owners](detection-targets.md) for detailed schema and examples.
+
+### 3.3 Seed Subscription Owners
+
+Subscription owners define who receives email notifications for each subscription.
 
 1. Copy `data/seed/subscription-owners.sample.json`
 2. Update with your actual subscription IDs and owner emails
 3. Insert each owner document into the `subscription-owners` container via Data Explorer
+
+Example owner document:
+```json
+{
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "subscriptionId": "12345678-1234-1234-1234-123456789abc",
+  "subscriptionName": "Production",
+  "ownerEmail": "owner@contoso.com",
+  "ownerName": "John Doe",
+  "teamName": "Platform Engineering"
+}
+```
 
 ## Step 4: Deploy Logic App
 
@@ -303,7 +347,10 @@ After deployment, verify each component:
 |-----------|------------|
 | Infrastructure | All resources visible in Azure Portal |
 | Function App | Health endpoint returns `{"status": "healthy"}` |
-| Cosmos DB | Module registry contains seed data |
+| Cosmos DB | 5 containers created (detection-targets, module-registry, findings-history, subscription-owners, execution-logs) |
+| Detection Targets | At least one enabled target in `detection-targets` container |
+| Module Registry | `abandoned-resources` module registered and enabled |
+| Subscription Owners | Owner mappings for all target subscriptions |
 | Logic App | Workflow shows "Enabled" status |
 | AI Agent | Test run completes with `--dry-run` |
 | RBAC | Agent can query target subscriptions |

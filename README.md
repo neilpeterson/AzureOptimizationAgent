@@ -4,10 +4,11 @@ The Azure Optimization Agent is an agentic solution that automatically identifie
 
 ### How It Works
 
-1. **Orchestration**: An AI agent receives a monthly timer trigger and autonomously decides which detection modules to run
-2. **Detection**: Azure Functions query Azure Resource Graph to find optimization opportunities (unattached disks, unused public IPs, empty load balancers, etc.)
-3. **Storage**: Findings are persisted to Cosmos DB with confidence scores, cost estimates, and severity classifications
-4. **Notification**: A Logic App sends personalized HTML emails to subscription owners with actionable recommendations
+1. **Targeting**: Configure which subscriptions and management groups to scan via the `detection-targets` container
+2. **Orchestration**: An AI agent receives a monthly timer trigger, retrieves targets, and decides which detection modules to run
+3. **Detection**: Azure Functions query Azure Resource Graph to find optimization opportunities (unattached disks, unused public IPs, empty load balancers, etc.)
+4. **Storage**: Findings are persisted to Cosmos DB with confidence scores, cost estimates, and severity classifications
+5. **Notification**: A Logic App sends personalized HTML emails to subscription owners with actionable recommendations
 
 ### Modular & Extensible
 
@@ -26,8 +27,9 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
 │  │                         AI Agent (GPT-4o)                               │  │
 │  │                                                                         │  │
-│  │  "Get enabled modules" ──► "Run abandoned-resources detection" ──►      │  │
-│  │  "Save findings" ──► "Get subscription owners" ──► "Send emails"        │  │
+│  │  "Get detection targets" ──► "Get enabled modules" ──►                  │  │
+│  │  "Run abandoned-resources detection" ──► "Save findings" ──►            │  │
+│  │  "Get subscription owners" ──► "Send emails"                            │  │
 │  └───────────────────────────────────┬─────────────────────────────────────┘  │
 │                                      │                                        │
 │                            Tool Calls (HTTP)                                  │
@@ -40,10 +42,12 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐   │
 │  │     Data Layer      │  │   Detection Layer   │  │       Health        │   │
 │  │                     │  │                     │  │                     │   │
-│  │ GET  /module-       │  │ POST /abandoned-    │  │ GET  /health        │   │
-│  │      registry       │  │      resources      │  │                     │   │
+│  │ GET  /detection-    │  │ POST /abandoned-    │  │ GET  /health        │   │
+│  │      targets        │  │      resources      │  │                     │   │
+│  │ GET  /module-       │  │                     │  │                     │   │
+│  │      registry       │  │ (Future modules...) │  │                     │   │
 │  │ POST /save-findings │  │                     │  │                     │   │
-│  │ GET  /findings-     │  │ (Future modules...) │  │                     │   │
+│  │ GET  /findings-     │  │                     │  │                     │   │
 │  │      history        │  │                     │  │                     │   │
 │  │ POST /subscription- │  │                     │  │                     │   │
 │  │      owners         │  │                     │  │                     │   │
@@ -56,19 +60,22 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 ┌──────────────────────────┐  ┌──────────────────────────┐
 │       COSMOS DB          │  │   AZURE RESOURCE GRAPH   │
 │       (Serverless)       │  │                          │
-│                          │  │   Queries 200+           │
-│  ┌────────────────────┐  │  │   subscriptions for:     │
-│  │ module-registry    │  │  │                          │
-│  │ (module configs)   │  │  │   • Unattached disks     │
+│                          │  │   Queries subscriptions  │
+│  ┌────────────────────┐  │  │   and management groups: │
+│  │ detection-targets  │  │  │                          │
+│  │ (subs & mgmt grps) │  │  │   • Unattached disks     │
 │  ├────────────────────┤  │  │   • Unused public IPs    │
-│  │ findings-history   │  │  │   • Empty load balancers │
-│  │ (365-day TTL)      │  │  │   • Orphaned NAT GWs     │
+│  │ module-registry    │  │  │   • Empty load balancers │
+│  │ (module configs)   │  │  │   • Orphaned NAT GWs     │
 │  ├────────────────────┤  │  │   • Empty SQL pools      │
-│  │ subscription-owners│  │  │   • Unused VNet GWs      │
-│  │ (email contacts)   │  │  │   • Orphaned DDoS plans  │
+│  │ findings-history   │  │  │   • Unused VNet GWs      │
+│  │ (365-day TTL)      │  │  │   • Orphaned DDoS plans  │
 │  ├────────────────────┤  │  │   • Disconnected PEs     │
-│  │ execution-logs     │  │  │                          │
-│  │ (90-day TTL)       │  │  └──────────────────────────┘
+│  │ subscription-owners│  │  │                          │
+│  │ (email contacts)   │  │  └──────────────────────────┘
+│  ├────────────────────┤  │
+│  │ execution-logs     │  │
+│  │ (90-day TTL)       │  │
 │  └────────────────────┘  │
 └──────────────────────────┘
               │
@@ -92,15 +99,23 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                            AZURE AI FOUNDRY AGENT (GPT-4o)                              │
 │                                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 1. GET MODULES                                                                  │    │
-│  │    Call: GET /api/get-module-registry                                           │    │
-│  │    Response: ["abandoned-resources", "overprovisioned-vms", ...]                │    │
-│  │    Agent decides: "I'll run each enabled module"                                │    │
+│  │ 1. GET DETECTION TARGETS                                                        │    │
+│  │    Call: GET /api/get-detection-targets                                         │    │
+│  │    Response: {targets: [{targetId: "sub-1", targetType: "subscription"}, ...]}  │    │
+│  │    Agent decides: "I have 5 subscriptions and 2 management groups to scan"      │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 2. RUN DETECTION                                                                │    │
+│  │ 2. GET MODULES                                                                  │    │
+│  │    Call: GET /api/get-module-registry                                           │    │
+│  │    Response: ["abandoned-resources", "overprovisioned-vms", ...]                │    │
+│  │    Agent decides: "I'll run each enabled module against my targets"             │    │
+│  └─────────────────────────────────────────────────────────────────────────────────┘    │
+│                                          │                                              │
+│                                          ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
+│  │ 3. RUN DETECTION                                                                │    │
 │  │    Call: POST /api/abandoned-resources {subscriptionIds: [...]}                 │    │
 │  │    Response: {findings: [...], summary: {totalSavings: $2,847, ...}}            │    │
 │  │    Agent analyzes: "Found 47 findings, $2,847/month potential savings"          │    │
@@ -108,14 +123,14 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 3. SAVE FINDINGS                                                                │    │
+│  │ 4. SAVE FINDINGS                                                                │    │
 │  │    Call: POST /api/save-findings {findings: [...]}                              │    │
 │  │    Agent reasons: "Findings saved, now get historical trends for context"       │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 4. GET TRENDS                                                                   │    │
+│  │ 5. GET TRENDS                                                                   │    │
 │  │    Call: GET /api/get-findings-trends?module_id=abandoned-resources&months=3    │    │
 │  │    Response: {trends: [...], summary: {trend: "improving", message: "..."}}     │    │
 │  │    Agent analyzes: "Findings down 56% from last month - great progress!"        │    │
@@ -123,7 +138,7 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 5. GET OWNERS                                                                   │    │
+│  │ 6. GET OWNERS                                                                   │    │
 │  │    Call: POST /api/subscription-owners {subscriptionIds: ["sub-1", "sub-2"]}    │    │
 │  │    Response: [{ownerEmail: "team-a@...", findings: [...]}, ...]                 │    │
 │  │    Agent decides: "Send personalized report with trend context to each owner"   │    │
@@ -131,7 +146,7 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 6. SEND NOTIFICATIONS                                                           │    │
+│  │ 7. SEND NOTIFICATIONS                                                           │    │
 │  │    Call: POST /logic-app/send-email {owner: "...", findings: [...], trends: {}} │    │
 │  │    Agent customizes: "Great job reducing abandoned disks from 50 to 22!"        │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
@@ -142,23 +157,23 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 ### Tool Call Flow
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│                           AZURE AI FOUNDRY AGENT (GPT-4o)                      │
-│                                                                                │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
-│  │  Timer   │    │   Get    │    │   Run    │    │   Save   │    │   Send   │  │
-│  │ Trigger  │───►│ Modules  │───►│Detection │───►│ Findings │───►│  Email   │  │
-│  │(Monthly) │    │          │    │          │    │          │    │          │  │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘  │
-│                       │               │               │               │        │
-│                  Tool Call       Tool Call       Tool Call       Tool Call     │
-└──────────────────────┬───────────────┬───────────────┬───────────────┬─────────┘
-                       │               │               │               │
-                       ▼               ▼               ▼               ▼
-                  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐
-                  │ Cosmos  │    │ Resource │    │ Cosmos  │    │  Logic   │
-                  │   DB    │    │  Graph   │    │   DB    │    │   App    │
-                  └─────────┘    └──────────┘    └─────────┘    └──────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                           AZURE AI FOUNDRY AGENT (GPT-4o)                                │
+│                                                                                          │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐      │
+│  │ Timer  │  │  Get   │  │  Get   │  │  Run   │  │  Save  │  │  Get   │  │  Send  │      │
+│  │Trigger │─►│Targets │─►│Modules │─►│Detect  │─►│Findings│─►│ Owners │─►│ Email  │      │
+│  │Monthly │  │        │  │        │  │        │  │        │  │        │  │        │      │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘      │
+│                  │            │           │           │           │           │          │
+│             Tool Call    Tool Call   Tool Call   Tool Call   Tool Call   Tool Call       │
+└──────────────────┬────────────┬───────────┬───────────┬───────────┬───────────┬──────────┘
+                   │            │           │           │           │           │
+                   ▼            ▼           ▼           ▼           ▼           ▼
+              ┌─────────┐  ┌─────────┐  ┌────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐
+              │ Cosmos  │  │ Cosmos  │  │Resource│  │ Cosmos  │  │ Cosmos  │  │ Logic  │
+              │   DB    │  │   DB    │  │ Graph  │  │   DB    │  │   DB    │  │  App   │
+              └─────────┘  └─────────┘  └────────┘  └─────────┘  └─────────┘  └────────┘
 ```
 
 ### What the Agent Receives and Analyzes
@@ -228,8 +243,8 @@ The agent uses this data to:
 │      Query      │                   │                 │      by owner     │                 │
 │                 │                   │  - findingId    │                   │  - HTML email   │
 │  KQL queries    │                   │  - resourceId   │                   │  - Per owner    │
-│  across 200+    │                   │  - severity     │                   │  - Monthly      │
-│  subscriptions  │                   │  - cost         │                   │                 │
+│  across target  │                   │  - severity     │                   │  - Monthly      │
+│  subs & mgmt    │                   │  - cost         │                   │                 │
 │                 │                   │  - confidence   │                   │                 │
 └─────────────────┘                   └─────────────────┘                   └─────────────────┘
 ```
@@ -277,6 +292,7 @@ python scripts/test_detector_live.py --all-types
 | Document | Description |
 |----------|-------------|
 | [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment instructions |
+| [Detection Targets & Owners](docs/detection-targets.md) | Configure subscriptions, management groups, and owners |
 | [Design Document](OptimizationAgent.md) | Full architecture and specifications |
 | [Module Contracts](docs/module-contracts.md) | Input/output schemas for detection modules |
 | [Module Registration](docs/module-registration.md) | How to register modules in Cosmos DB |

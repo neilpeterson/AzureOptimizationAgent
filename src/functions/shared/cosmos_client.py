@@ -18,6 +18,7 @@ class CosmosClient:
     FINDINGS_HISTORY = "findings-history"
     SUBSCRIPTION_OWNERS = "subscription-owners"
     EXECUTION_LOGS = "execution-logs"
+    DETECTION_TARGETS = "detection-targets"
 
     def __init__(
         self,
@@ -211,6 +212,41 @@ class CosmosClient:
         return list(
             container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
         )
+
+    # Detection Targets operations
+    def get_enabled_targets(self) -> list[dict[str, Any]]:
+        """Get all enabled detection targets."""
+        container = self._get_container(self.DETECTION_TARGETS)
+        query = "SELECT * FROM c WHERE c.enabled = true"
+        return list(container.query_items(query, enable_cross_partition_query=True))
+
+    def get_all_targets(self) -> list[dict[str, Any]]:
+        """Get all detection targets (including disabled)."""
+        container = self._get_container(self.DETECTION_TARGETS)
+        query = "SELECT * FROM c"
+        return list(container.query_items(query, enable_cross_partition_query=True))
+
+    def get_target(self, target_id: str) -> dict[str, Any] | None:
+        """Get a specific detection target by ID."""
+        container = self._get_container(self.DETECTION_TARGETS)
+        try:
+            return container.read_item(item=target_id, partition_key=target_id)
+        except CosmosResourceNotFoundError:
+            return None
+
+    def get_targets_by_type(self, target_type: str) -> list[dict[str, Any]]:
+        """Get all enabled targets of a specific type (subscription or managementGroup)."""
+        container = self._get_container(self.DETECTION_TARGETS)
+        query = "SELECT * FROM c WHERE c.targetType = @targetType AND c.enabled = true"
+        parameters = [{"name": "@targetType", "value": target_type}]
+        return list(
+            container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
+        )
+
+    def upsert_target(self, target: dict[str, Any]) -> None:
+        """Create or update a detection target."""
+        container = self._get_container(self.DETECTION_TARGETS)
+        container.upsert_item(target)
 
     # Trends operations
     def get_findings_for_trends(

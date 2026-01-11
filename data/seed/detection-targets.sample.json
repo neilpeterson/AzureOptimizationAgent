@@ -1,0 +1,69 @@
+[
+  {
+    "id": "sub-production-001",
+    "targetId": "sub-production-001",
+    "targetType": "subscription",
+    "displayName": "Production Subscription",
+    "enabled": true,
+    "teamId": "team-platform",
+    "teamName": "Platform Engineering",
+    "ownerEmail": "platform-team@contoso.com",
+    "description": "Main production workloads",
+    "tags": {
+      "environment": "production",
+      "costCenter": "CC-1001"
+    },
+    "createdDate": "2026-01-11T00:00:00Z",
+    "lastModifiedDate": "2026-01-11T00:00:00Z"
+  },
+  {
+    "id": "sub-development-002",
+    "targetId": "sub-development-002",
+    "targetType": "subscription",
+    "displayName": "Development Subscription",
+    "enabled": true,
+    "teamId": "team-dev",
+    "teamName": "Application Development",
+    "ownerEmail": "dev-team@contoso.com",
+    "description": "Development and testing workloads",
+    "tags": {
+      "environment": "development",
+      "costCenter": "CC-2001"
+    },
+    "createdDate": "2026-01-11T00:00:00Z",
+    "lastModifiedDate": "2026-01-11T00:00:00Z"
+  },
+  {
+    "id": "mg-corporate",
+    "targetId": "mg-corporate",
+    "targetType": "managementGroup",
+    "displayName": "Corporate Management Group",
+    "enabled": true,
+    "teamId": "team-finops",
+    "teamName": "FinOps",
+    "ownerEmail": "finops@contoso.com",
+    "description": "All corporate subscriptions under this management group",
+    "tags": {
+      "scope": "enterprise",
+      "costCenter": "CC-0001"
+    },
+    "createdDate": "2026-01-11T00:00:00Z",
+    "lastModifiedDate": "2026-01-11T00:00:00Z"
+  },
+  {
+    "id": "sub-sandbox-003",
+    "targetId": "sub-sandbox-003",
+    "targetType": "subscription",
+    "displayName": "Sandbox Subscription",
+    "enabled": false,
+    "teamId": "team-dev",
+    "teamName": "Application Development",
+    "ownerEmail": "dev-team@contoso.com",
+    "description": "Sandbox environment - scanning disabled",
+    "tags": {
+      "environment": "sandbox"
+    },
+    "createdDate": "2026-01-11T00:00:00Z",
+    "lastModifiedDate": "2026-01-11T00:00:00Z"
+  }
+]
