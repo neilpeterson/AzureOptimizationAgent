@@ -514,7 +514,7 @@ def _get_recommendation(resource_type: str) -> str:
 # =============================================================================
 
 
-@app.route(route="health", methods=["GET"])
+@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def health_check(req: func.HttpRequest) -> func.HttpResponse:
     """Health check endpoint.
 

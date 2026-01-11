@@ -1,39 +1,37 @@
-[
-  {
-    "id": "abandoned-resources",
-    "moduleId": "abandoned-resources",
-    "moduleName": "Abandoned Resources Detector",
-    "version": "1.0.0",
-    "enabled": true,
-    "status": "active",
-    "category": "cost-optimization",
-    "description": "Detects orphaned Azure resources that incur cost but provide no value, including unattached disks, unused public IPs, empty load balancers, and more.",
-    "functionApp": "func-optimization-agent",
-    "functionName": "abandoned-resources",
-    "schedule": "monthly",
-    "outputSchema": "v1-standard-findings",
-    "configuration": {
-      "resourceTypes": [
-        "microsoft.compute/disks",
-        "microsoft.network/publicipaddresses",
-        "microsoft.network/loadbalancers",
-        "microsoft.network/natgateways",
-        "microsoft.sql/servers/elasticpools",
-        "microsoft.network/virtualnetworkgateways",
-        "microsoft.network/ddosprotectionplans",
-        "microsoft.network/privateendpoints"
-      ],
-      "minimumOrphanAgeDays": 7,
-      "includeZeroCost": false,
-      "confidenceThresholds": {
-        "certain": 95,
-        "high": 75,
-        "medium": 50,
-        "low": 25
-      }
-    },
-    "createdDate": "2026-01-10T00:00:00Z",
-    "lastModifiedDate": "2026-01-10T00:00:00Z",
-    "lastExecutionDate": null
-  }
-]
+{
+  "id": "abandoned-resources",
+  "moduleId": "abandoned-resources",
+  "moduleName": "Abandoned Resources Detector",
+  "version": "1.0.0",
+  "enabled": true,
+  "status": "active",
+  "category": "cost-optimization",
+  "description": "Detects orphaned Azure resources that incur cost but provide no value, including unattached disks, unused public IPs, empty load balancers, and more.",
+  "functionApp": "func-optimization-agent",
+  "functionName": "abandoned-resources",
+  "schedule": "monthly",
+  "outputSchema": "v1-standard-findings",
+  "configuration": {
+    "resourceTypes": [
+      "microsoft.compute/disks",
+      "microsoft.network/publicipaddresses",
+      "microsoft.network/loadbalancers",
+      "microsoft.network/natgateways",
+      "microsoft.sql/servers/elasticpools",
+      "microsoft.network/virtualnetworkgateways",
+      "microsoft.network/ddosprotectionplans",
+      "microsoft.network/privateendpoints"
+    ],
+    "minimumOrphanAgeDays": 7,
+    "includeZeroCost": false,
+    "confidenceThresholds": {
+      "certain": 95,
+      "high": 75,
+      "medium": 50,
+      "low": 25
+    }
+  },
+  "createdDate": "2026-01-10T00:00:00Z",
+  "lastModifiedDate": "2026-01-10T00:00:00Z",
+  "lastExecutionDate": null
+}
