@@ -10,8 +10,8 @@ Provide a comprehensive status report for the Azure Optimization Agent project.
 ## Steps:
 
 ### 1. **Read Project Files**
-   - Read `STATUS.md` for current implementation status
-   - Read `PLAN.md` for the implementation roadmap
+   - Read `docs/project-management/STATUS.md` for current implementation status
+   - Read `docs/project-management/PLAN.md` for the implementation roadmap
    - Optionally scan `src/functions/` to verify file counts
 
 ### 2. **Display Phase Progress**
@@ -52,16 +52,32 @@ Provide a comprehensive status report for the Azure Optimization Agent project.
 
    ```
    src/functions/
+   ├── function_app.py
    ├── requirements.txt
    ├── shared/           # Generic utilities (Phase 2)
+   │   ├── __init__.py
    │   ├── models.py
    │   ├── cosmos_client.py
    │   ├── resource_graph.py
    │   ├── confidence.py
    │   └── cost_calculator.py
    ├── data_layer/       # Data Layer Functions (Phase 3)
+   │   ├── __init__.py
+   │   ├── get_module_registry.py
+   │   ├── get_detection_targets.py
+   │   ├── save_findings.py
+   │   ├── get_findings_history.py
+   │   ├── get_findings_trends.py
+   │   └── get_subscription_owners.py
    └── detection_layer/  # Detection Modules (Phase 4)
+       ├── __init__.py
        └── abandoned_resources/
+           ├── __init__.py
+           ├── detector.py
+           ├── queries.py
+           ├── config.py
+           ├── confidence.py
+           └── cost_calculator.py
    ```
 
 ### 7. **Suggest Next Steps**
@@ -116,14 +132,14 @@ Present information in a clear, scannable format:
 
 | File | Purpose |
 |------|---------|
-| `STATUS.md` | Implementation progress tracking |
-| `PLAN.md` | Detailed implementation plan |
+| `docs/project-management/STATUS.md` | Implementation progress tracking |
+| `docs/project-management/PLAN.md` | Detailed implementation plan |
 | `CLAUDE.md` | Project architecture and guidelines |
-| `docs/shared-library.md` | Shared library documentation |
+| `docs/solution-docs/shared-library.md` | Shared library documentation |
 
 ## Important Notes:
 
-- Always read STATUS.md first - it's the source of truth
+- Always read `docs/project-management/STATUS.md` first - it's the source of truth
 - Verify file counts by scanning the actual directories
 - Highlight any discrepancies between STATUS.md and actual state
 - If STATUS.md is outdated, offer to update it

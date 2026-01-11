@@ -133,3 +133,9 @@ Mixed targeting is supported - you can combine specific subscriptions with manag
 - All resources use System-Assigned Managed Identity
 - Cross-subscription access via Management Group scope with Reader + Cost Management Reader roles
 - No PII stored; subscription IDs only
+
+## Related Documentation
+
+- [Implementation Status](./docs/project-management/STATUS.md) - Current implementation progress
+- [Implementation Plan](./docs/project-management/PLAN.md) - Detailed implementation roadmap
+- [Specification](./docs/project-management/SPECIFICATION.md) - Full project specification
