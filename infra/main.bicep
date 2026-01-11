@@ -58,10 +58,18 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: false
+    allowSharedKeyAccess: true // Required for Flex Consumption deployment
   }
   tags: {
     application: 'optimization-agent'
+  }
+}
+
+// Blob container for Flex Consumption deployment packages
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: '${storageAccount.name}/default/app-package-${functionAppName}'
+  properties: {
+    publicAccess: 'None'
   }
 }
 
@@ -221,16 +229,16 @@ resource containerDetectionTargets 'Microsoft.DocumentDB/databaseAccounts/sqlDat
 }
 
 // =============================================================================
-// App Service Plan (Consumption)
+// App Service Plan (Flex Consumption)
 // =============================================================================
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: appServicePlanName
   location: location
   kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    tier: 'FlexConsumption'
+    name: 'FC1'
   }
   properties: {
     reserved: true // Required for Linux
@@ -241,10 +249,13 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
 }
 
 // =============================================================================
-// Function App
+// Function App (Flex Consumption)
 // =============================================================================
 
-resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
+// Storage account connection string for Flex Consumption
+var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
@@ -254,21 +265,35 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storageAccount.properties.primaryEndpoints.blob}app-package-${functionAppName}'
+          authentication: {
+            type: 'StorageAccountConnectionString'
+            storageAccountConnectionStringName: 'DEPLOYMENT_STORAGE_CONNECTION_STRING'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 100
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'python'
+        version: '3.11'
+      }
+    }
     siteConfig: {
-      linuxFxVersion: 'PYTHON|3.11'
-      pythonVersion: '3.11'
       appSettings: [
         {
-          name: 'AzureWebJobsStorage__accountName'
-          value: storageAccount.name
+          name: 'AzureWebJobsStorage'
+          value: storageConnectionString
         }
         {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'python'
+          name: 'DEPLOYMENT_STORAGE_CONNECTION_STRING'
+          value: storageConnectionString
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
@@ -287,13 +312,14 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: cosmosDbDatabaseName
         }
       ]
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
     }
   }
   tags: {
     application: 'optimization-agent'
   }
+  dependsOn: [
+    deploymentContainer
+  ]
 }
 
 // =============================================================================

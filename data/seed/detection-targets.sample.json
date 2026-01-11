@@ -1,16 +1,16 @@
 [
   {
-    "id": "sub-production-001",
-    "targetId": "sub-production-001",
+    "id": "2ec679f7-dcad-4d66-9c2b-9207af36f77f",
+    "targetId": "2ec679f7-dcad-4d66-9c2b-9207af36f77f",
     "targetType": "subscription",
-    "displayName": "Production Subscription",
+    "displayName": "SC API Gateway - Development Sandbox Two",
     "enabled": true,
-    "teamId": "team-platform",
-    "teamName": "Platform Engineering",
-    "ownerEmail": "platform-team@contoso.com",
-    "description": "Main production workloads",
+    "teamId": "SCE Platform",
+    "teamName": "SCE Platform",
+    "ownerEmail": "nepeters@microsoft.com",
+    "description": "TME Lab",
     "tags": {
-      "environment": "production",
+      "environment": "LAB",
       "costCenter": "CC-1001"
     },
     "createdDate": "2026-01-11T00:00:00Z",

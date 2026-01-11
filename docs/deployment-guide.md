@@ -22,41 +22,24 @@ The Bicep template deploys all required Azure resources:
 ### 1.1 Create Resource Group
 
 ```bash
-az group create \
-  --name rg-optimization-agent \
-  --location eastus
+az group create --name rg-optimization-agent --location eastus
 ```
 
 ### 1.2 Deploy Bicep Template
 
 ```bash
-az deployment group create \
-  --resource-group rg-optimization-agent \
-  --template-file infra/main.bicep \
-  --parameters infra/main.bicepparam
+az deployment group create --resource-group rg-optimization-agent --template-file infra/main.bicep --parameters infra/main.bicepparam
 ```
-
-### 1.3 Verify Deployment
-
-```bash
-az deployment group show \
-  --resource-group rg-optimization-agent \
-  --name main \
-  --query properties.provisioningState
-```
-
-Expected output: `"Succeeded"`
 
 ### 1.4 Note Resource Names
 
 After deployment, note the following resource names from the output or Azure Portal:
+
 - Function App name (e.g., `func-optimization-agent-tme-two`)
 - Logic App name (e.g., `logic-optimization-agent-tme-two`)
 - Cosmos DB account name (e.g., `cosmos-optimization-agent-tme-two`)
 
 ## Step 2: Deploy Function App
-
-### 2.1 Navigate to Functions Directory
 
 ```bash
 cd src/functions
@@ -65,65 +48,26 @@ cd src/functions
 ### 2.2 Deploy to Azure
 
 ```bash
-func azure functionapp publish <function-app-name>
+# Create deployment package
+zip -r /tmp/functions-deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".venv/*" -x ".python_packages/*"
+
+# Deploy with remote build
+az functionapp deployment source config-zip --name <function-app-name> --resource-group rg-optimization-agent --src /tmp/functions-deploy.zip --build-remote true
 ```
-
-Replace `<function-app-name>` with your Function App name from Step 1.4.
-
-Example:
-```bash
-func azure functionapp publish func-optimization-agent-tme-two
-```
-
-### 2.3 Verify Functions Deployed
-
-```bash
-az functionapp function list \
-  --name <function-app-name> \
-  --resource-group rg-optimization-agent \
-  --query "[].name"
-```
-
-Expected functions:
-- `get-detection-targets`
-- `get-module-registry`
-- `save-findings`
-- `get-findings-history`
-- `get-findings-trends`
-- `get-subscription-owners`
-- `abandoned-resources`
-- `send-optimization-email`
-- `health`
-
 ### 2.4 Get Function App URL and Key
 
 ```bash
 # Get the Function App URL
-az functionapp show \
-  --name <function-app-name> \
-  --resource-group rg-optimization-agent \
-  --query defaultHostName \
-  --output tsv
+az functionapp show --name func-optimization-agent-tme-two --resource-group rg-optimization-agent-tme-two --query defaultHostName --output tsv
 
 # Get the default function key
-az functionapp keys list \
-  --name <function-app-name> \
-  --resource-group rg-optimization-agent \
-  --query functionKeys.default \
-  --output tsv
+az functionapp keys list --name <function-app-name> --resource-group rg-optimization-agent --query functionKeys.default --output tsv
 ```
-
-Save these values - you'll need them for the Agent configuration.
 
 ### 2.5 Test Health Endpoint
 
 ```bash
 curl https://<function-app-name>.azurewebsites.net/api/health
-```
-
-Expected response:
-```json
-{"status": "healthy", "timestamp": "..."}
 ```
 
 ## Step 3: Seed Cosmos DB Data
@@ -143,11 +87,7 @@ Alternatively, use the Azure CLI:
 
 ```bash
 # Get Cosmos DB endpoint
-COSMOS_ENDPOINT=$(az cosmosdb show \
-  --name <cosmos-account-name> \
-  --resource-group rg-optimization-agent \
-  --query documentEndpoint \
-  --output tsv)
+COSMOS_ENDPOINT=$(az cosmosdb show --name <cosmos-account-name> --resource-group rg-optimization-agent --query documentEndpoint --output tsv)
 
 # Use Azure CLI extension or Data Explorer to insert the document
 ```
@@ -156,12 +96,13 @@ COSMOS_ENDPOINT=$(az cosmosdb show \
 
 Detection targets define which subscriptions and management groups to scan.
 
-1. Copy `data/seed/detection-targets.sample.json`
-2. Update with your actual subscription IDs and/or management group IDs
-3. For each target in your list:
+The sample file `data/seed/detection-targets.sample.json` contains an array of example documents. Each document must be inserted individually (not the entire array).
+
+1. Open `data/seed/detection-targets.sample.json` for reference
+2. For each target you want to add:
    - Navigate to **optimization-db** > **detection-targets** in Data Explorer
    - Click **New Item**
-   - Paste the target document
+   - Paste a single document (not the array) with your actual subscription/management group ID
    - Click **Save**
 
 Example target document:
@@ -185,9 +126,14 @@ See [Detection Targets & Owners](detection-targets.md) for detailed schema and e
 
 Subscription owners define who receives email notifications for each subscription.
 
-1. Copy `data/seed/subscription-owners.sample.json`
-2. Update with your actual subscription IDs and owner emails
-3. Insert each owner document into the `subscription-owners` container via Data Explorer
+The sample file `data/seed/subscription-owners.sample.json` contains an array of example documents. Each document must be inserted individually (not the entire array).
+
+1. Open `data/seed/subscription-owners.sample.json` for reference
+2. For each subscription owner:
+   - Navigate to **optimization-db** > **subscription-owners** in Data Explorer
+   - Click **New Item**
+   - Paste a single document with your actual subscription ID and owner email
+   - Click **Save**
 
 Example owner document:
 ```json
@@ -309,23 +255,13 @@ At the Management Group or Subscription level:
 
 ```bash
 # Get the Function App's managed identity principal ID
-PRINCIPAL_ID=$(az functionapp identity show \
-  --name <function-app-name> \
-  --resource-group rg-optimization-agent \
-  --query principalId \
-  --output tsv)
+PRINCIPAL_ID=$(az functionapp identity show --name <function-app-name> --resource-group rg-optimization-agent --query principalId --output tsv)
 
 # Assign Reader role at subscription scope
-az role assignment create \
-  --assignee $PRINCIPAL_ID \
-  --role "Reader" \
-  --scope /subscriptions/<target-subscription-id>
+az role assignment create --assignee $PRINCIPAL_ID --role "Reader" --scope /subscriptions/<target-subscription-id>
 
 # Assign Cost Management Reader for cost data
-az role assignment create \
-  --assignee $PRINCIPAL_ID \
-  --role "Cost Management Reader" \
-  --scope /subscriptions/<target-subscription-id>
+az role assignment create --assignee $PRINCIPAL_ID --role "Cost Management Reader" --scope /subscriptions/<target-subscription-id>
 ```
 
 ### 6.2 For Multiple Subscriptions
@@ -333,10 +269,7 @@ az role assignment create \
 For scanning multiple subscriptions, assign roles at the Management Group level:
 
 ```bash
-az role assignment create \
-  --assignee $PRINCIPAL_ID \
-  --role "Reader" \
-  --scope /providers/Microsoft.Management/managementGroups/<management-group-id>
+az role assignment create --assignee $PRINCIPAL_ID --role "Reader" --scope /providers/Microsoft.Management/managementGroups/<management-group-id>
 ```
 
 ## Validation Checklist
@@ -361,9 +294,7 @@ After deployment, verify each component:
 
 ```bash
 # View function logs
-az functionapp log deployment list \
-  --name <function-app-name> \
-  --resource-group rg-optimization-agent
+az functionapp log deployment list --name <function-app-name> --resource-group rg-optimization-agent
 
 # Stream live logs
 func azure functionapp logstream <function-app-name>
@@ -374,9 +305,7 @@ func azure functionapp logstream <function-app-name>
 Verify the managed identity has the `Cosmos DB Built-in Data Contributor` role:
 
 ```bash
-az cosmosdb sql role assignment list \
-  --account-name <cosmos-account-name> \
-  --resource-group rg-optimization-agent
+az cosmosdb sql role assignment list --account-name <cosmos-account-name> --resource-group rg-optimization-agent
 ```
 
 ### Logic App Connection Issues
