@@ -1,27 +1,5 @@
 [
   {
-    "id": "2ec679f7-dcad-4d66-9c2b-9207af36f77f",
-    "targetId": "2ec679f7-dcad-4d66-9c2b-9207af36f77f",
-    "targetType": "subscription",
-    "displayName": "SC API Gateway - Development Sandbox Two",
-    "enabled": true,
-    "teamId": "SCE Platform",
-    "teamName": "SCE Platform",
-    "ownerEmails": ["nepeters@microsoft.com"],
-    "ownerNames": ["Neil Peterson"],
-    "notificationPreferences": {
-      "timezone": "America/Los_Angeles",
-      "language": "en-US"
-    },
-    "costCenter": "CC-1001",
-    "description": "TME Lab",
-    "tags": {
-      "environment": "LAB"
-    },
-    "createdDate": "2026-01-11T00:00:00Z",
-    "lastModifiedDate": "2026-01-11T00:00:00Z"
-  },
-  {
     "id": "sub-development-002",
     "targetId": "sub-development-002",
     "targetType": "subscription",

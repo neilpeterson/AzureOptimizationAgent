@@ -1,17 +1,10 @@
 # Deployment Guide
 
-## Prerequisites
-
-- Azure CLI authenticated (`az login`)
-- Python 3.11+
-- Azure Functions Core Tools v4
-
 ## Step 1: Deploy Infrastructure
 
 ```bash
-az group create --name rg-optimization-agent --location eastus
-
-az deployment group create --resource-group rg-optimization-agent --template-file infra/main.bicep --parameters infra/main.bicepparam
+az group create --name rg-optimization-agent-cenus --location centralus
+az deployment group create --resource-group rg-optimization-agent-cenus --template-file infra/main.bicep --parameters infra/main.bicepparam
 ```
 
 Note the resource names from deployment output (Function App, Logic App, Cosmos DB).
@@ -20,50 +13,37 @@ Note the resource names from deployment output (Function App, Logic App, Cosmos 
 
 ```bash
 cd src/functions
-
 zip -r /tmp/functions-deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".venv/*" -x ".python_packages/*"
-
-az functionapp deployment source config-zip --name <function-app-name> --resource-group rg-optimization-agent --src /tmp/functions-deploy.zip --build-remote true
+az functionapp deployment source config-zip --name func-optimization-agent-cenus --resource-group rg-optimization-agent-cenus --src /tmp/functions-deploy.zip --build-remote true
 ```
 
-Verify:
+Verify using the health endpoint.
 ```bash
-curl https://<function-app-name>.azurewebsites.net/api/health
+curl https://func-optimization-agent-cenus.azurewebsites.net/api/health
 ```
 
 ## Step 3: Seed Cosmos DB
 
-In Azure Portal > Cosmos DB > Data Explorer:
+First, edit `data/seed/detection-targets.sample.json` to configure your target subscriptions and management groups.
 
-**Module Registry** (`optimization-db` > `module-registry` > New Item):
-- Paste contents of `data/seed/module-registry.json`
+Then run the seed script (uses your Azure CLI credentials):
 
-**Detection Targets** (`optimization-db` > `detection-targets` > New Item):
-- Add one document per target subscription/management group:
-
-```json
-{
-  "id": "<subscription-id>",
-  "targetId": "<subscription-id>",
-  "targetType": "subscription",
-  "displayName": "Production",
-  "enabled": true,
-  "ownerEmails": ["team@contoso.com"],
-  "ownerNames": ["Team Name"]
-}
+```bash
+pip install azure-cosmos
+python scripts/seed_cosmos.py
 ```
+
+The script seeds both `module-registry` and `detection-targets` containers using upsert (safe to re-run).
 
 ## Step 4: Configure Logic App
 
-1. Portal > Logic App > **Logic app code view**
-2. Paste contents of `src/logic-apps/send-optimization-email/workflow.json`
-3. Save
+The script creates the Office 365 API connection, updates the workflow definition, and outputs the HTTP trigger URL. It will also provide an OAuth consent URL - **open this in your browser to authorize the Office 365 connection**.
 
-4. Portal > Logic App > **API connections** > Add connection
-5. Search "Office 365 Outlook" > Create > Sign in
-6. Name connection `office365`
+> **Portal alternative:** This can also be done manually in Azure Portal by navigating to the Logic App's code view to paste the workflow JSON, creating an Office 365 API connection, and authorizing it with your credentials.
 
-7. Copy the HTTP trigger URL from Logic App designer
+```powershell
+./scripts/configure_logic_app.ps1
+```
 
 ## Step 5: Configure AI Agent
 
@@ -85,7 +65,7 @@ python src/agent/run_agent.py --dry-run
 ## Step 6: Configure RBAC
 
 ```bash
-PRINCIPAL_ID=$(az functionapp identity show --name <function-app-name> --resource-group rg-optimization-agent --query principalId --output tsv)
+PRINCIPAL_ID=$(az functionapp identity show --name <function-app-name> --resource-group rg-optimization-agent-cenus --query principalId --output tsv)
 
 # For single subscription
 az role assignment create --assignee $PRINCIPAL_ID --role "Reader" --scope /subscriptions/<subscription-id>
