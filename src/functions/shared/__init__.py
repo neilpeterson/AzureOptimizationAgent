@@ -8,9 +8,11 @@ from shared.models import (
     ModuleRegistry,
     SubscriptionOwner,
     ExecutionLog,
+    DetectionTarget,
     FindingCategory,
     Severity,
     ConfidenceLevel,
+    TargetType,
 )
 from shared.cosmos_client import CosmosClient
 from shared.resource_graph import ResourceGraphClient
@@ -39,9 +41,11 @@ __all__ = [
     "ModuleRegistry",
     "SubscriptionOwner",
     "ExecutionLog",
+    "DetectionTarget",
     "FindingCategory",
     "Severity",
     "ConfidenceLevel",
+    "TargetType",
     # Clients
     "CosmosClient",
     "ResourceGraphClient",

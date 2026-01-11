@@ -3,7 +3,7 @@
 // =============================================================================
 // Deploys all resources for the optimization agent solution:
 // - Storage Account (for Function App)
-// - Cosmos DB (serverless) with 4 containers
+// - Cosmos DB (serverless) with 5 containers
 // - App Service Plan (consumption)
 // - Function App with system-assigned managed identity
 // - Logic App for email notifications
@@ -201,6 +201,21 @@ resource containerExecutionLogs 'Microsoft.DocumentDB/databaseAccounts/sqlDataba
         kind: 'Hash'
       }
       defaultTtl: 7776000 // 90 days in seconds
+    }
+  }
+}
+
+// Container: detection-targets
+resource containerDetectionTargets 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: cosmosDbDatabase
+  name: 'detection-targets'
+  properties: {
+    resource: {
+      id: 'detection-targets'
+      partitionKey: {
+        paths: ['/targetId']
+        kind: 'Hash'
+      }
     }
   }
 }

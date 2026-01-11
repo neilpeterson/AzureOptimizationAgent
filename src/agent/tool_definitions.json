@@ -3,6 +3,28 @@
     {
       "type": "function",
       "function": {
+        "name": "get_detection_targets",
+        "description": "Get all enabled detection targets (subscriptions and management groups) to scan. Returns the configured targets along with counts by type.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "include_disabled": {
+              "type": "boolean",
+              "description": "Include disabled targets in the response (default: false)"
+            },
+            "target_type": {
+              "type": "string",
+              "enum": ["subscription", "managementGroup"],
+              "description": "Filter to only return targets of this type"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "get_module_registry",
         "description": "Get all enabled detection modules from the registry. Returns list of modules with their configuration.",
         "parameters": {
@@ -120,7 +142,7 @@
       "type": "function",
       "function": {
         "name": "abandoned_resources",
-        "description": "Run the abandoned resources detection module. Scans subscriptions for orphaned resources like unattached disks, unused public IPs, empty load balancers, etc.",
+        "description": "Run the abandoned resources detection module. Scans subscriptions and/or management groups for orphaned resources like unattached disks, unused public IPs, empty load balancers, etc.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -134,6 +156,13 @@
                 "type": "string"
               },
               "description": "List of Azure subscription IDs to scan"
+            },
+            "managementGroupIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of management group IDs to scan (all child subscriptions will be included)"
             },
             "configuration": {
               "type": "object",
@@ -157,7 +186,7 @@
               "description": "If true, detect but don't persist findings (default: false)"
             }
           },
-          "required": ["executionId", "subscriptionIds"]
+          "required": ["executionId"]
         }
       }
     },

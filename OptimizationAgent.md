@@ -2,7 +2,7 @@
 
 ## Solution Overview
 
-Managing Azure costs across 200 subscriptions is complex. Service teams often leave orphaned resources (unattached disks, unused public IPs, empty load balancers) that accumulate cost without providing value. Manual identification is time-consuming and error-prone.
+Managing Azure costs across many subscriptions is complex. Service teams often leave orphaned resources (unattached disks, unused public IPs, empty load balancers) that accumulate cost without providing value. Manual identification is time-consuming and error-prone.
 
 The **Azure Optimization Agent** is an agentic solution that automatically identifies cost optimization opportunities, detects spending trends, and delivers personalized monthly recommendations to subscription owners.
 
@@ -21,7 +21,7 @@ The solution automates cost optimization through:
 | **Modularity** | Plugin-based architecture allowing easy addition/removal of optimization modules |
 | **Azure-Native** | Maximize use of native Azure services; minimize custom code |
 | **AI-Powered** | Leverage Azure AI Foundry Agent Service for intelligent synthesis and recommendations |
-| **Scalable** | Designed for 200 subscriptions today, extensible to 1000+ |
+| **Scalable** | Handles large fleets of subscriptions and management groups |
 | **Multi-Agent Ready** | Architecture supports future evolution to autonomous optimization actions |
 
 
@@ -47,7 +47,7 @@ The architecture consists of three distinct layers, each implemented as Azure Fu
 | **Data Layer** | Manages persistent data operations—retrieving subscription owners, storing findings history for trend analysis, and maintaining the module registry. Does not query Azure resources directly. | Azure Functions + Cosmos DB |
 | **Notification Layer** | Composes and delivers personalized email reports to subscription owners with actionable recommendations. | Logic Apps |
 
-The **Detection Layer** is externally focused—it queries Azure Resource Graph across all 200 subscriptions to discover resource state. The **Data Layer** is internally focused—it manages the solution's own data (who owns what subscription, what was found previously, which modules are enabled).
+The **Detection Layer** is externally focused—it queries Azure Resource Graph across all configured subscriptions and management groups to discover resource state. The **Data Layer** is internally focused—it manages the solution's own data (who owns what subscription, what was found previously, which modules are enabled).
 
 
 ```
@@ -234,7 +234,7 @@ The module detects the following resource types that **incur cost when orphaned*
                        ▼
     ┌─────────────────────────────────────┐
     │ 2. Query Azure Resource Graph       │
-    │    (all 200 subscriptions in        │
+    │    (all target subscriptions in     │
     │     single query per resource type) │
     └──────────────────┬──────────────────┘
                        │
@@ -311,7 +311,7 @@ Each finding includes a confidence score indicating certainty that the resource 
   "executionId": "exec-2026-01-08-001",
   "executionTime": "2026-01-08T10:30:00Z",
   "status": "success",
-  "subscriptionsScanned": 200,
+  "subscriptionsScanned": 47,
   "findings": [
     {
       "findingId": "f-abc123",
@@ -504,7 +504,7 @@ The agent connects to the following tools:
 ```
 You are the Azure Optimization Agent, an expert in Azure cost optimization. Your role is to:
 
-1. ANALYZE findings from optimization modules across 200 Azure subscriptions
+1. ANALYZE findings from optimization modules across all configured Azure subscriptions and management groups
 2. PRIORITIZE findings by cost impact and confidence level
 3. IDENTIFY TRENDS by comparing current findings to historical data
 4. GENERATE actionable recommendations for subscription owners
@@ -754,7 +754,7 @@ The notification system uses Azure Logic Apps to send monthly optimization repor
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  Azure Functions Identity:                                                  │
-│  ├── Reader (Management Group scope - all 200 subscriptions)                │
+│  ├── Reader (Management Group scope - all target subscriptions)             │
 │  ├── Cost Management Reader (Management Group scope)                        │
 │  └── Cosmos DB Data Contributor (Cosmos DB account)                         │
 │                                                                             │
@@ -770,11 +770,11 @@ The notification system uses Azure Logic Apps to send monthly optimization repor
 
 ### Cross-Subscription Access
 
-To query all 200 subscriptions efficiently:
+To query all target subscriptions efficiently:
 
 **Recommended Approach: Management Group Scope**
 
-1. Create or identify a Management Group containing all 200 subscriptions
+1. Create or identify a Management Group containing your target subscriptions
 2. Assign `Reader` and `Cost Management Reader` roles at Management Group level
 3. Azure Resource Graph queries automatically span all child subscriptions
 
@@ -783,7 +783,7 @@ Management Group: "All-Subscriptions"
 ├── Subscription: Contoso-Prod-01
 ├── Subscription: Contoso-Prod-02
 ├── Subscription: Contoso-Dev-01
-├── ... (200 total)
+├── ...
 └── Subscription: Contoso-Test-99
 ```
 
@@ -928,7 +928,7 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 | Azure OpenAI (GPT-4o) | ~100K tokens/month | $50 - $100 |
 | Azure Functions | Consumption, ~1000 executions | $5 - $15 |
 | Azure Cosmos DB | Serverless, ~1GB storage | $25 - $50 |
-| Azure Logic Apps | Consumption, 200 emails | $10 - $20 |
+| Azure Logic Apps | Consumption | $10 - $20 |
 | Azure Resource Graph | Free | $0 |
 | Azure Monitor (Logging) | Basic logs | $10 - $20 |
 | **Total** | | **$100 - $205/month** |
@@ -937,7 +937,7 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 
 - Cosmos DB Serverless is ideal for this workload (spiky, monthly execution)
 - Function Consumption plan is sufficient; no need for Premium
-- Token usage scales with number of subscriptions with findings; 200 subscriptions with avg. 5 findings each ≈ 50K-100K tokens/month
+- Token usage scales with number of subscriptions with findings
 
 ---
 
@@ -1034,7 +1034,7 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 | Task | Owner | Duration | Dependencies |
 |------|-------|----------|--------------|
 | Full pipeline integration test | Dev Team | 1 day | All components ready |
-| Performance testing (200 subscriptions) | QA Team | 1 day | Integration test passed |
+| Performance testing | QA Team | 1 day | Integration test passed |
 | Error handling and retry logic | Dev Team | 1 day | Testing complete |
 | Monitoring and alerting setup | Platform Team | 0.5 days | Pipeline stable |
 
@@ -1070,7 +1070,7 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 | Host Q&A session for service teams | Project Lead | 0.5 days | Announcement sent |
 
 **Deliverables:**
-- All 200 subscription owners informed
+- All subscription owners informed
 - FAQ published
 - Questions addressed
 
@@ -1078,14 +1078,14 @@ For detailed Azure Resource Graph queries and API integration patterns, see [Opt
 
 | Task | Owner | Duration | Dependencies |
 |------|-------|----------|--------------|
-| Enable for all 200 subscriptions | Dev Team | 0.5 days | Communication complete |
+| Enable for all target subscriptions | Dev Team | 0.5 days | Communication complete |
 | Execute first full monthly run | Dev Team | 0.5 days | All subscriptions enabled |
 | Monitor for issues | Platform Team | 2.5 days | First run complete |
 | Address any delivery failures | Dev Team | Ongoing | Monitoring active |
 | Post-launch retrospective | Project Lead | 0.5 days | First run stabilized |
 
 **Deliverables:**
-- All 200 subscriptions receiving reports
+- All target subscriptions receiving reports
 - First full month complete
 - Lessons learned documented
 

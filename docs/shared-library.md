@@ -164,7 +164,7 @@ def detect(subscription_ids: list[str]) -> list[Finding]:
                                                 ▼
                                     ┌──────────────────────┐
                                     │ Azure Resource Graph │
-                                    │ (200 subscriptions)  │
+                                    │ (target subs/mgmt)   │
                                     └──────────────────────┘
 ```
 

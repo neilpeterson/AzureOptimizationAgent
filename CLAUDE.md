@@ -38,6 +38,7 @@ Optimization capabilities are pluggable modules registered in Cosmos DB's `modul
 {
   "executionId": "exec-2026-01-08-001",
   "subscriptionIds": ["sub-1", "sub-2"],
+  "managementGroupIds": ["mg-corp"],
   "configuration": { },
   "dryRun": false
 }
@@ -95,10 +96,37 @@ All modules output findings with these required fields:
 
 | Container | Partition Key | Purpose |
 |-----------|--------------|---------|
+| `detection-targets` | `/targetId` | Subscriptions and management groups to scan |
 | `module-registry` | `/moduleId` | Module configuration |
 | `findings-history` | `/subscriptionId` | Historical findings (365-day TTL) |
 | `subscription-owners` | `/subscriptionId` | Owner mapping (manual, interim) |
 | `execution-logs` | `/executionId` | Audit trail (90-day TTL) |
+
+## Detection Targets
+
+Detection targets define which subscriptions and management groups to scan. Targets are stored in the `detection-targets` container.
+
+### Detection Target Schema
+
+```json
+{
+  "id": "sub-prod-001",
+  "targetId": "sub-prod-001",
+  "targetType": "subscription",  // or "managementGroup"
+  "displayName": "Production Subscription",
+  "enabled": true,
+  "teamId": "team-platform",
+  "teamName": "Platform Engineering",
+  "ownerEmail": "platform@contoso.com"
+}
+```
+
+### Target Types
+
+- **subscription**: Individual Azure subscription ID
+- **managementGroup**: Management group ID (scans all child subscriptions)
+
+Mixed targeting is supported - you can combine specific subscriptions with management groups.
 
 ## Security
 

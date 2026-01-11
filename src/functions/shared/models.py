@@ -48,6 +48,13 @@ class ModuleStatus(str, Enum):
     DEVELOPMENT = "development"
 
 
+class TargetType(str, Enum):
+    """Type of detection target."""
+
+    SUBSCRIPTION = "subscription"
+    MANAGEMENT_GROUP = "managementGroup"
+
+
 class Finding(BaseModel):
     """Standard finding schema (v1) for all optimization modules."""
 
@@ -77,10 +84,16 @@ class Finding(BaseModel):
 
 
 class ModuleInput(BaseModel):
-    """Input contract for optimization modules."""
+    """Input contract for optimization modules.
+
+    Supports mixed targeting: subscriptions and/or management groups can be
+    specified. At least one of subscription_ids or management_group_ids must
+    be provided.
+    """
 
     execution_id: str = Field(..., alias="executionId")
-    subscription_ids: list[str] = Field(..., alias="subscriptionIds")
+    subscription_ids: list[str] = Field(default_factory=list, alias="subscriptionIds")
+    management_group_ids: list[str] = Field(default_factory=list, alias="managementGroupIds")
     configuration: dict[str, Any] = Field(default_factory=dict)
     dry_run: bool = Field(False, alias="dryRun")
 
@@ -173,11 +186,17 @@ class NotificationPreferences(BaseModel):
 
 
 class SubscriptionOwner(BaseModel):
-    """Subscription-to-owner mapping stored in Cosmos DB."""
+    """Subscription or management group to owner mapping stored in Cosmos DB.
+
+    Can represent either a subscription or a management group owner.
+    When target_type is 'managementGroup', subscription_id contains the
+    management group ID and applies to all child subscriptions.
+    """
 
     id: str
     subscription_id: str = Field(..., alias="subscriptionId")
     subscription_name: str | None = Field(None, alias="subscriptionName")
+    target_type: TargetType = Field(TargetType.SUBSCRIPTION, alias="targetType")
     owner_email: str = Field(..., alias="ownerEmail")
     owner_name: str | None = Field(None, alias="ownerName")
     team_name: str | None = Field(None, alias="teamName")
@@ -190,6 +209,7 @@ class SubscriptionOwner(BaseModel):
 
     class Config:
         populate_by_name = True
+        use_enum_values = True
 
 
 class FindingHistory(BaseModel):
@@ -234,3 +254,28 @@ class ExecutionLog(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+class DetectionTarget(BaseModel):
+    """Detection target stored in Cosmos DB detection-targets container.
+
+    Represents a subscription or management group to scan for optimization
+    opportunities. Different targets can belong to different teams.
+    """
+
+    id: str
+    target_id: str = Field(..., alias="targetId")
+    target_type: TargetType = Field(..., alias="targetType")
+    display_name: str = Field(..., alias="displayName")
+    enabled: bool = True
+    team_id: str | None = Field(None, alias="teamId")
+    team_name: str | None = Field(None, alias="teamName")
+    owner_email: str | None = Field(None, alias="ownerEmail")
+    description: str | None = None
+    tags: dict[str, str] = Field(default_factory=dict)
+    created_date: datetime | None = Field(None, alias="createdDate")
+    last_modified_date: datetime | None = Field(None, alias="lastModifiedDate")
+
+    class Config:
+        populate_by_name = True
+        use_enum_values = True

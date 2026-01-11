@@ -1,6 +1,6 @@
 # Implementation Status
 
-> Last Updated: 2026-01-10
+> Last Updated: 2026-01-11
 
 ## Phase 1: Infrastructure ✅
 - [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP
@@ -57,6 +57,23 @@
 - [ ] Configure Office 365 connector (manual Azure portal step)
 - [ ] Test email delivery (requires deployed infrastructure)
 
+## Phase 7: Detection Targets ✅
+- [x] `infra/main.bicep` - Added `detection-targets` Cosmos container (partition key: `/targetId`)
+- [x] `src/functions/shared/models.py` - `DetectionTarget` model, `TargetType` enum, `targetType` field in `SubscriptionOwner`
+- [x] `src/functions/shared/models.py` - `ModuleInput` updated with `managementGroupIds` field
+- [x] `src/functions/shared/cosmos_client.py` - Target methods (`get_enabled_targets`, `get_targets_by_type`, `upsert_target`)
+- [x] `src/functions/shared/resource_graph.py` - `get_subscriptions_in_management_group()`, `resolve_targets_to_subscriptions()`
+- [x] `src/functions/data_layer/get_detection_targets.py` - Function to retrieve enabled targets
+- [x] `src/functions/function_app.py` - `/api/get-detection-targets` HTTP endpoint
+- [x] `data/seed/detection-targets.sample.json` - Sample seed data
+- [x] `src/agent/tool_definitions.json` - Added `get_detection_targets` tool, updated `abandoned_resources` with `managementGroupIds`
+- [x] `src/agent/system_prompt.txt` - Updated to 7-step workflow starting with detection targets
+- [x] `src/agent/run_agent.py` - Detection targets workflow, `--management-groups` CLI flag
+- [x] `docs/detection-targets.md` - Configuration guide for targets and subscription owners
+- [x] `docs/deployment-guide.md` - Added target seeding steps
+- [x] `README.md` - Updated diagrams and execution flow
+- [x] `CLAUDE.md` - Added detection targets schema
+
 ## Testing & Validation
 - [x] `scripts/test_detector_live.py` - Live detector test against Azure subscriptions
 - [x] `scripts/test_data_layer_live.py` - Live data layer test against Cosmos DB
@@ -67,6 +84,8 @@
 - [ ] Pilot with subset of subscriptions
 
 ## Documentation
+- [x] `docs/deployment-guide.md` - Step-by-step deployment instructions
+- [x] `docs/detection-targets.md` - Detection targets and subscription owners configuration guide
 - [x] `docs/shared-library.md` - Shared library architecture and module integration guide
 - [x] `docs/module-contracts.md` - ModuleInput/ModuleOutput schemas and examples
 - [x] `docs/module-registration.md` - How to register modules in Cosmos DB
@@ -82,7 +101,20 @@
 ## Blockers & Issues
 - None yet
 
+## Technical Debt / Revisit
+
+### `get-subscription-owners` uses POST instead of GET
+- **Location:** `function_app.py` line ~150, `tool_definitions.json`
+- **Issue:** Endpoint is semantically a read operation but uses POST to accept `subscriptionIds` array in request body
+- **Rationale:** POST avoids URL length limits (~2000-8000 chars) when looking up many subscriptions
+- **Options:** (1) Keep POST for pragmatism, (2) Change to GET with comma-separated query param, (3) Support both
+- **Recommendation:** Revisit if API consistency becomes a priority; current approach works fine
+
 ## Notes
+- **2026-01-11:** Completed Phase 7 Detection Targets. Implemented: `SubscriptionOwner` schema updated with `targetType` field, `ModuleInput` supports `managementGroupIds`, `ResourceGraphClient` has `resolve_targets_to_subscriptions()` and `get_subscriptions_in_management_group()` methods, `get_detection_targets` tool definition added, system prompt updated to 7-step workflow with detection targets, `run_agent.py` updated with `--management-groups` CLI flag and automatic target retrieval from Cosmos DB, CLAUDE.md updated with detection targets schema.
+- **2026-01-11:** Completed Phase 7 Data Layer implementation. Added `detection-targets` Cosmos container to Bicep, `DetectionTarget` model and `TargetType` enum to models.py, Cosmos client methods for target operations, `get_detection_targets.py` function, `/api/get-detection-targets` endpoint, and seed data. Created `docs/detection-targets.md` with comprehensive configuration guide for targets and subscription owners. Updated deployment guide with target seeding steps. Updated README with detection targets in architecture diagram, execution flow (now 7 steps), and tool call flow. Scrubbed all docs to remove "200 subscriptions" references - now uses generic "target subscriptions and management groups" language.
+- **2026-01-11:** Added Phase 7 Detection Targets feature plan. Supports multiple subscriptions and/or management groups with mixed targeting. Different targets can belong to different teams via subscription-owners. Email reports will include per-subscription breakdowns with costs and findings details.
+- **2026-01-10:** Added deployment guide (`docs/deployment-guide.md`) with step-by-step instructions for Bicep, Function App, Logic App, and AI Agent deployment.
 - **2026-01-10:** Completed Phase 6 Notification Layer. Created `src/logic-apps/send-optimization-email/` with: `workflow.json` (Logic App workflow with HTTP trigger and Office 365 email action), `connections.json` (Office 365 connector config). Created `email-template.html` with professional styling, trend messaging, and findings display. Added `/api/send-optimization-email` endpoint to function_app.py that forwards requests to Logic App and adds resource-specific recommendations. Remaining manual steps: configure Office 365 connector in Azure portal and test email delivery.
 - **2026-01-10:** Ran `/scrub` - removed 4 unused imports from `run_agent.py` (AgentThread, FunctionTool, MessageRole, ToolSet). Updated PLAN.md directory structure to match actual implementation (detection_layer now has abandoned_resources subdirectory with separate files for queries, config, confidence, cost_calculator). Added get_findings_trends.py to PLAN.md. Removed specific "200 subscriptions" reference from PLAN.md. All imports verified working. No sensitive data in repo.
 - **2026-01-10:** Completed Phase 5 AI Agent Configuration. Created `src/agent/` directory with: `system_prompt.txt` (agent instructions with 6-step workflow), `tool_definitions.json` (OpenAPI-style schemas for all 8 endpoints), and `run_agent.py` (orchestration script using Azure AI Foundry SDK with CLI args for --dry-run and --subscriptions). Remaining manual steps: configure AI Foundry project in Azure portal and test agent tool calls.

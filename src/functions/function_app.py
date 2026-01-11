@@ -18,6 +18,7 @@ from data_layer.save_findings import save_findings
 from data_layer.get_findings_history import get_findings_history
 from data_layer.get_findings_trends import get_findings_trends
 from data_layer.get_subscription_owners import get_subscription_owners
+from data_layer.get_detection_targets import get_detection_targets
 from detection_layer.abandoned_resources import detect_from_dict
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
@@ -264,6 +265,52 @@ def get_subscription_owners_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
     except Exception as e:
         logger.exception("Error getting subscription owners")
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500,
+        )
+
+
+@app.route(route="get-detection-targets", methods=["GET"])
+def get_detection_targets_handler(req: func.HttpRequest) -> func.HttpResponse:
+    """Get detection targets (subscriptions and management groups to scan).
+
+    GET /api/get-detection-targets
+    Query params:
+        - include_disabled: bool (optional) - Include disabled targets
+        - target_type: str (optional) - Filter by type ('subscription' or 'managementGroup')
+
+    Returns:
+        200: List of detection targets with counts
+        500: Error response
+
+    Example response:
+        {
+            "targets": [
+                {"targetId": "sub-123", "targetType": "subscription", "displayName": "Production", ...},
+                {"targetId": "mg-corp", "targetType": "managementGroup", "displayName": "Corporate", ...}
+            ],
+            "count": 2,
+            "subscriptionCount": 1,
+            "managementGroupCount": 1
+        }
+    """
+    try:
+        include_disabled = req.params.get("include_disabled", "false").lower() == "true"
+        target_type = req.params.get("target_type")
+
+        result = get_detection_targets(
+            include_disabled=include_disabled,
+            target_type=target_type,
+        )
+        return func.HttpResponse(
+            json.dumps(result, default=str),
+            mimetype="application/json",
+            status_code=200,
+        )
+    except Exception as e:
+        logger.exception("Error getting detection targets")
         return func.HttpResponse(
             json.dumps({"error": str(e)}),
             mimetype="application/json",
