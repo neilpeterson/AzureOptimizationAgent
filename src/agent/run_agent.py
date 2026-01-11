@@ -115,7 +115,6 @@ class OptimizationAgentRunner:
             "save_findings": ("POST", "/api/save-findings"),
             "get_findings_history": ("GET", "/api/get-findings-history"),
             "get_findings_trends": ("GET", "/api/get-findings-trends"),
-            "get_subscription_owners": ("POST", "/api/get-subscription-owners"),
             "abandoned_resources": ("POST", "/api/abandoned-resources"),
             "send_optimization_email": ("POST", "/api/send-optimization-email"),
             "health_check": ("GET", "/api/health"),
@@ -173,6 +172,8 @@ class OptimizationAgentRunner:
         }
 
         # Step 1: Get detection targets (if not provided via CLI)
+        # Targets include owner info (ownerEmails, ownerNames, notificationPreferences)
+        targets = []
         if not subscription_ids and not management_group_ids:
             print("\n[Step 1] Getting detection targets...")
             targets_response = self._call_function("get_detection_targets", {})
@@ -254,46 +255,48 @@ class OptimizationAgentRunner:
                 trend = trends_by_module[module_id].get("trend", "unknown")
                 print(f"  {module_id}: {trend}")
 
-        # Step 6: Get subscription owners
-        if all_findings:
+        # Step 6: Send notifications (using owner info from detection targets)
+        if all_findings and targets:
             subscription_ids_with_findings = list(set(f.get("subscriptionId") for f in all_findings))
-            print(f"\n[Step 6] Getting owners for {len(subscription_ids_with_findings)} subscriptions...")
+            # Build a map of target ID to target (with owner info)
+            target_map = {t["targetId"]: t for t in targets}
 
-            owners_response = self._call_function("get_subscription_owners", {
-                "subscriptionIds": subscription_ids_with_findings
-            })
-            owners = owners_response.get("owners", [])
-            print(f"  Found {len(owners)} owners")
-
-            # Step 7: Send notifications (skip if dry run)
             if not dry_run:
-                print("\n[Step 7] Sending notifications...")
-                for owner in owners:
-                    owner_findings = [
+                print(f"\n[Step 6] Sending notifications to {len(subscription_ids_with_findings)} targets...")
+                for sub_id in subscription_ids_with_findings:
+                    target = target_map.get(sub_id, {})
+                    owner_emails = target.get("ownerEmails", [])
+                    owner_names = target.get("ownerNames", [])
+
+                    if not owner_emails:
+                        results["errors"].append(f"No owner emails for target {sub_id}")
+                        continue
+
+                    target_findings = [
                         f for f in all_findings
-                        if f.get("subscriptionId") == owner.get("subscriptionId")
+                        if f.get("subscriptionId") == sub_id
                     ]
-                    if owner_findings:
+                    if target_findings:
                         email_response = self._call_function("send_optimization_email", {
-                            "ownerEmail": owner.get("ownerEmail"),
-                            "ownerName": owner.get("ownerName"),
-                            "subscriptionId": owner.get("subscriptionId"),
-                            "subscriptionName": owner.get("subscriptionName"),
-                            "findings": owner_findings,
+                            "ownerEmails": owner_emails,
+                            "ownerNames": owner_names,
+                            "subscriptionId": sub_id,
+                            "subscriptionName": target.get("displayName", sub_id),
+                            "findings": target_findings,
                             "trends": trends_by_module.get("abandoned-resources", {}),
                             "totalEstimatedMonthlyCost": sum(
-                                f.get("estimatedMonthlyCost", 0) for f in owner_findings
+                                f.get("estimatedMonthlyCost", 0) for f in target_findings
                             ),
                         })
                         if "error" not in email_response:
                             results["subscriptionsNotified"] += 1
                         else:
                             results["errors"].append(
-                                f"Failed to notify {owner.get('ownerEmail')}: {email_response['error']}"
+                                f"Failed to notify {owner_emails}: {email_response['error']}"
                             )
                 print(f"  Notified {results['subscriptionsNotified']} subscription owners")
             else:
-                print("\n[Step 7] Skipping notifications (dry run)")
+                print("\n[Step 6] Skipping notifications (dry run)")
 
         # Summary
         print("\n" + "=" * 60)

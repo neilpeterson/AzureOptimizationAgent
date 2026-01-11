@@ -177,7 +177,7 @@ def detect(subscription_ids: list[str]) -> list[Finding]:
 
 ### Overview
 
-The `CosmosClient` provides CRUD operations for all four Cosmos DB containers used by the solution.
+The `CosmosClient` provides CRUD operations for all Cosmos DB containers used by the solution.
 
 ```python
 from shared import CosmosClient
@@ -190,12 +190,17 @@ modules = client.get_enabled_modules()
 
 | Container | Partition Key | Purpose |
 |-----------|---------------|---------|
+| `detection-targets` | `/targetId` | Subscriptions/management groups to scan (includes owner info) |
 | `module-registry` | `/moduleId` | Module configuration and metadata |
 | `findings-history` | `/subscriptionId` | Historical findings (365-day TTL) |
-| `subscription-owners` | `/subscriptionId` | Owner contact mapping |
 | `execution-logs` | `/executionId` | Audit trail (90-day TTL) |
 
 ### Key Methods
+
+**Detection Targets:**
+- `get_enabled_targets()` - List all active targets
+- `get_targets_by_type(target_type)` - Filter by subscription or managementGroup
+- `upsert_target(target)` - Create or update target
 
 **Module Registry:**
 - `get_enabled_modules()` - List all active modules
@@ -206,10 +211,6 @@ modules = client.get_enabled_modules()
 - `save_findings(findings)` - Store findings
 - `get_findings_by_subscription(subscription_id)` - For trend analysis
 - `get_findings_by_execution(execution_id)` - All findings from a run
-
-**Subscription Owners:**
-- `get_subscription_owner(subscription_id)` - Single lookup
-- `get_subscription_owners(subscription_ids)` - Batch lookup
 
 **Execution Logs:**
 - `create_execution_log(log)` - Start new execution
@@ -222,27 +223,27 @@ modules = client.get_enabled_modules()
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              AI Agent                                       │
 │                                                                             │
-│  1. Get modules    2. Execute modules    3. Save results    4. Send emails  │
-│        │                   │                    │                  │        │
-└────────┼───────────────────┼────────────────────┼──────────────────┼────────┘
-         │                   │                    │                  │
-         ▼                   ▼                    ▼                  ▼
+│  1. Get targets    2. Get modules    3. Execute    4. Save    5. Send       │
+│        │                  │              │            │           │         │
+└────────┼──────────────────┼──────────────┼────────────┼───────────┼─────────┘
+         │                  │              │            │           │
+         ▼                  ▼              ▼            ▼           ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           CosmosClient                                      │
 │                        (shared library)                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
-         │                   │                    │                  │
-         ▼                   ▼                    ▼                  ▼
-┌─────────────┐    ┌─────────────┐    ┌──────────────────┐    ┌──────────────┐
-│   module-   │    │  execution- │    │    findings-     │    │ subscription-│
-│  registry   │    │    logs     │    │     history      │    │    owners    │
-├─────────────┤    ├─────────────┤    ├──────────────────┤    ├──────────────┤
-│ moduleId    │    │ executionId │    │ subscriptionId   │    │subscriptionId│
-│ enabled     │    │ startTime   │    │ findingId        │    │ ownerEmail   │
-│ config{}    │    │ status      │    │ severity         │    │ ownerName    │
-│ lastExec    │    │ findings    │    │ cost             │    │ teamName     │
-└─────────────┘    └─────────────┘    └──────────────────┘    └──────────────┘
-     TTL: ∞           TTL: 90 days        TTL: 365 days           TTL: ∞
+         │                  │              │            │           │
+         ▼                  ▼              ▼            ▼           ▼
+┌─────────────┐    ┌─────────────┐   ┌─────────────┐  ┌────────────┐
+│ detection-  │    │   module-   │   │  findings-  │  │ execution- │
+│  targets    │    │  registry   │   │   history   │  │    logs    │
+├─────────────┤    ├─────────────┤   ├─────────────┤  ├────────────┤
+│ targetId    │    │ moduleId    │   │subscriptionId│ │executionId │
+│ targetType  │    │ enabled     │   │ findingId   │  │ startTime  │
+│ ownerEmails │    │ config{}    │   │ severity    │  │ status     │
+│ enabled     │    │ lastExec    │   │ cost        │  │ findings   │
+└─────────────┘    └─────────────┘   └─────────────┘  └────────────┘
+     TTL: ∞             TTL: ∞         TTL: 365 days    TTL: 90 days
 ```
 
 ---
@@ -259,7 +260,7 @@ All components use shared Pydantic models for consistent data structures.
 | `ModuleInput` | What the agent sends to a module |
 | `ModuleOutput` | What a module returns (findings + summary) |
 | `ModuleRegistry` | Module metadata from Cosmos DB |
-| `SubscriptionOwner` | Owner contact info |
+| `DetectionTarget` | Target config with owner contact info |
 | `FindingHistory` | Historical finding record |
 | `ExecutionLog` | Audit log entry |
 
@@ -300,20 +301,17 @@ All components use shared Pydantic models for consistent data structures.
        │               │  └───────────┘  │                │
        │               └────────┬────────┘                │
        │                        │                         │
-       │    ModuleOutput        │                         │
-       │  ┌─────────────────┐   │                         │
-       │◄─┤ moduleId        │◄──┤                         │
-       │  │ findings[]      │   │                         │
-       │  │ summary         │───┼────────────────────────►│
-       │  │ errors          │   │   SubscriptionOwner     │
-       │  └─────────────────┘   │  ┌─────────────────┐    │
-       │                        │  │ ownerEmail      │───►│
-       │                        │  │ subscriptionId  │    │
-       │                        │  └─────────────────┘    │
+       │    ModuleOutput        │   DetectionTarget       │
+       │  ┌─────────────────┐   │  ┌─────────────────┐    │
+       │◄─┤ moduleId        │◄──┤  │ targetId        │───►│
+       │  │ findings[]      │   │  │ ownerEmails[]   │    │
+       │  │ summary         │───┼─►│ ownerNames[]    │    │
+       │  │ errors          │   │  └─────────────────┘    │
+       │  └─────────────────┘   │                         │
        ▼                        ▼                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Cosmos DB                               │
-│  ExecutionLog    FindingHistory    ModuleRegistry    Owners     │
+│  ExecutionLog    FindingHistory    ModuleRegistry    Targets    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

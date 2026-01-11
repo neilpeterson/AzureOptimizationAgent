@@ -10,8 +10,7 @@ This document describes all HTTP endpoints exposed by the Optimization Agent Fun
 | [/save-findings](#post-save-findings) | POST | Saves detection findings to history |
 | [/get-findings-history](#get-get-findings-history) | GET | Returns historical findings for a subscription |
 | [/get-findings-trends](#get-get-findings-trends) | GET | Returns month-over-month findings trends |
-| [/get-subscription-owners](#post-get-subscription-owners) | POST | Returns owner information for subscriptions |
-| [/get-detection-targets](#get-get-detection-targets) | GET | Returns subscriptions and management groups to scan |
+| [/get-detection-targets](#get-get-detection-targets) | GET | Returns subscriptions and management groups to scan with owner info |
 | [/abandoned-resources](#post-abandoned-resources) | POST | Runs abandoned resources detection module |
 | [/send-optimization-email](#post-send-optimization-email) | POST | Sends optimization report email via Logic App |
 | [/health](#get-health) | GET | Returns health status (no auth required) |
@@ -161,38 +160,9 @@ Returns month-over-month findings trends for a detection module.
 }
 ```
 
-### POST /get-subscription-owners
-
-Returns owner information for specified subscriptions.
-
-**Request Body:**
-
-```json
-{
-  "subscriptionIds": [
-    "12345678-1234-1234-1234-123456789abc",
-    "87654321-4321-4321-4321-cba987654321"
-  ]
-}
-```
-
-**Response:**
-
-```json
-[
-  {
-    "subscriptionId": "12345678-1234-1234-1234-123456789abc",
-    "subscriptionName": "Production",
-    "ownerEmail": "owner@contoso.com",
-    "ownerName": "John Doe",
-    "teamName": "Platform Engineering"
-  }
-]
-```
-
 ### GET /get-detection-targets
 
-Returns subscriptions and management groups configured for scanning.
+Returns subscriptions and management groups configured for scanning, including owner contact information for notifications.
 
 **Query Parameters:**
 
@@ -212,13 +182,21 @@ Returns subscriptions and management groups configured for scanning.
       "displayName": "Production Subscription",
       "enabled": true,
       "teamName": "Platform Engineering",
-      "ownerEmail": "platform@contoso.com"
+      "ownerEmails": ["platform@contoso.com", "finops@contoso.com"],
+      "ownerNames": ["Platform Team", "FinOps Team"],
+      "notificationPreferences": {
+        "timezone": "America/Los_Angeles",
+        "language": "en-US"
+      },
+      "costCenter": "CC-1001"
     },
     {
       "targetId": "mg-corp",
       "targetType": "managementGroup",
       "displayName": "Corporate",
-      "enabled": true
+      "enabled": true,
+      "ownerEmails": ["corporate@contoso.com"],
+      "ownerNames": ["Corporate IT"]
     }
   ],
   "count": 2,
@@ -294,14 +272,14 @@ Runs the abandoned resources detection module to find orphaned disks, IPs, load 
 
 ### POST /send-optimization-email
 
-Sends an optimization report email to a subscription owner via Logic App.
+Sends an optimization report email to subscription owners via Logic App. Supports multiple recipients.
 
 **Request Body:**
 
 ```json
 {
-  "ownerEmail": "owner@contoso.com",
-  "ownerName": "John Doe",
+  "ownerEmails": ["owner@contoso.com", "finops@contoso.com"],
+  "ownerNames": ["John Doe", "FinOps Team"],
   "subscriptionId": "12345678-1234-1234-1234-123456789abc",
   "subscriptionName": "Production",
   "findings": [
@@ -322,8 +300,8 @@ Sends an optimization report email to a subscription owner via Logic App.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| ownerEmail | string | Yes | Recipient email address |
-| ownerName | string | No | Recipient display name |
+| ownerEmails | array | Yes | Recipient email addresses (supports multiple) |
+| ownerNames | array | No | Recipient display names (parallel to ownerEmails) |
 | subscriptionId | string | Yes | Subscription ID for the report |
 | subscriptionName | string | No | Subscription display name |
 | findings | array | Yes | List of findings to include |
@@ -335,7 +313,10 @@ Sends an optimization report email to a subscription owner via Logic App.
 ```json
 {
   "status": "sent",
-  "message": "Email sent successfully"
+  "recipients": ["owner@contoso.com", "finops@contoso.com"],
+  "recipientCount": 2,
+  "subscriptionId": "12345678-1234-1234-1234-123456789abc",
+  "findingsCount": 1
 }
 ```
 

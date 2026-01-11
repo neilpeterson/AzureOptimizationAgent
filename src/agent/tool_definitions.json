@@ -4,7 +4,7 @@
       "type": "function",
       "function": {
         "name": "get_detection_targets",
-        "description": "Get all enabled detection targets (subscriptions and management groups) to scan. Returns the configured targets along with counts by type.",
+        "description": "Get all enabled detection targets (subscriptions and management groups) to scan. Returns the configured targets along with owner contact information (ownerEmails, ownerNames, notificationPreferences) and counts by type.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -121,26 +121,6 @@
     {
       "type": "function",
       "function": {
-        "name": "get_subscription_owners",
-        "description": "Look up owner contact information for one or more subscriptions. Returns email addresses and names for sending notifications.",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "subscriptionIds": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "List of Azure subscription IDs to look up"
-            }
-          },
-          "required": ["subscriptionIds"]
-        }
-      }
-    },
-    {
-      "type": "function",
-      "function": {
         "name": "abandoned_resources",
         "description": "Run the abandoned resources detection module. Scans subscriptions and/or management groups for orphaned resources like unattached disks, unused public IPs, empty load balancers, etc.",
         "parameters": {
@@ -194,17 +174,23 @@
       "type": "function",
       "function": {
         "name": "send_optimization_email",
-        "description": "Send a personalized optimization report email to a subscription owner via the Logic App.",
+        "description": "Send a personalized optimization report email to subscription owners via the Logic App. Supports multiple recipients.",
         "parameters": {
           "type": "object",
           "properties": {
-            "ownerEmail": {
-              "type": "string",
-              "description": "Email address of the subscription owner"
+            "ownerEmails": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Email addresses of the subscription owners (supports multiple recipients)"
             },
-            "ownerName": {
-              "type": "string",
-              "description": "Display name of the owner (for personalization)"
+            "ownerNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Display names of the owners (for personalization, parallel to ownerEmails)"
             },
             "subscriptionId": {
               "type": "string",
@@ -248,7 +234,7 @@
               "description": "Total estimated monthly cost of all findings"
             }
           },
-          "required": ["ownerEmail", "subscriptionId", "findings"]
+          "required": ["ownerEmails", "subscriptionId", "findings"]
         }
       }
     },

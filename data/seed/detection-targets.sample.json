@@ -7,11 +7,16 @@
     "enabled": true,
     "teamId": "SCE Platform",
     "teamName": "SCE Platform",
-    "ownerEmail": "nepeters@microsoft.com",
+    "ownerEmails": ["nepeters@microsoft.com"],
+    "ownerNames": ["Neil Peterson"],
+    "notificationPreferences": {
+      "timezone": "America/Los_Angeles",
+      "language": "en-US"
+    },
+    "costCenter": "CC-1001",
     "description": "TME Lab",
     "tags": {
-      "environment": "LAB",
-      "costCenter": "CC-1001"
+      "environment": "LAB"
     },
     "createdDate": "2026-01-11T00:00:00Z",
     "lastModifiedDate": "2026-01-11T00:00:00Z"
@@ -24,11 +29,16 @@
     "enabled": true,
     "teamId": "team-dev",
     "teamName": "Application Development",
-    "ownerEmail": "dev-team@contoso.com",
+    "ownerEmails": ["dev-lead@contoso.com", "dev-team@contoso.com"],
+    "ownerNames": ["Dev Lead", "Dev Team DL"],
+    "notificationPreferences": {
+      "timezone": "America/New_York",
+      "language": "en-US"
+    },
+    "costCenter": "CC-2001",
     "description": "Development and testing workloads",
     "tags": {
-      "environment": "development",
-      "costCenter": "CC-2001"
+      "environment": "development"
     },
     "createdDate": "2026-01-11T00:00:00Z",
     "lastModifiedDate": "2026-01-11T00:00:00Z"
@@ -41,11 +51,16 @@
     "enabled": true,
     "teamId": "team-finops",
     "teamName": "FinOps",
-    "ownerEmail": "finops@contoso.com",
+    "ownerEmails": ["finops@contoso.com", "cloud-governance@contoso.com"],
+    "ownerNames": ["FinOps Team", "Cloud Governance"],
+    "notificationPreferences": {
+      "timezone": "America/Chicago",
+      "language": "en-US"
+    },
+    "costCenter": "CC-0001",
     "description": "All corporate subscriptions under this management group",
     "tags": {
-      "scope": "enterprise",
-      "costCenter": "CC-0001"
+      "scope": "enterprise"
     },
     "createdDate": "2026-01-11T00:00:00Z",
     "lastModifiedDate": "2026-01-11T00:00:00Z"
@@ -58,7 +73,13 @@
     "enabled": false,
     "teamId": "team-dev",
     "teamName": "Application Development",
-    "ownerEmail": "dev-team@contoso.com",
+    "ownerEmails": ["dev-team@contoso.com"],
+    "ownerNames": ["Dev Team"],
+    "notificationPreferences": {
+      "timezone": "America/Los_Angeles",
+      "language": "en-US"
+    },
+    "costCenter": "CC-2001",
     "description": "Sandbox environment - scanning disabled",
     "tags": {
       "environment": "sandbox"

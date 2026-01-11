@@ -4,7 +4,7 @@ The Azure Optimization Agent is an agentic solution that automatically identifie
 
 ### How It Works
 
-1. **Targeting**: Configure which subscriptions and management groups to scan via the `detection-targets` container
+1. **Targeting**: Configure which subscriptions and management groups to scan via the `detection-targets` container (includes owner contact info)
 2. **Orchestration**: An AI agent receives a monthly timer trigger, retrieves targets, and decides which detection modules to run
 3. **Detection**: Azure Functions query Azure Resource Graph to find optimization opportunities (unattached disks, unused public IPs, empty load balancers, etc.)
 4. **Storage**: Findings are persisted to Cosmos DB with confidence scores, cost estimates, and severity classifications
@@ -29,13 +29,13 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 │  │                                                                         │  │
 │  │  "Get detection targets" ──► "Get enabled modules" ──►                  │  │
 │  │  "Run abandoned-resources detection" ──► "Save findings" ──►            │  │
-│  │  "Get subscription owners" ──► "Send emails"                            │  │
-│  └───────────────────────────────────┬─────────────────────────────────────┘  │
-│                                      │                                        │
-│                            Tool Calls (HTTP)                                  │
-└──────────────────────────────────────┼────────────────────────────────────────┘
-                                       │
-                                       ▼
+│  │  "Get trends" ──► "Send emails to owners"                               │  │
+│  └───────────────────────────────────────────────────────────────────────┬─┘  │
+│                                                                          │    │
+│                            Tool Calls (HTTP)                             │    │
+└──────────────────────────────────────────────────────────────────────────┼────┘
+                                                                           │
+                                                                           ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                            AZURE FUNCTION APP                                │
 │                                                                              │
@@ -49,8 +49,8 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 │  │ POST /save-findings │  │                     │  │                     │   │
 │  │ GET  /findings-     │  │                     │  │                     │   │
 │  │      history        │  │                     │  │                     │   │
-│  │ POST /subscription- │  │                     │  │                     │   │
-│  │      owners         │  │                     │  │                     │   │
+│  │ GET  /findings-     │  │                     │  │                     │   │
+│  │      trends         │  │                     │  │                     │   │
 │  └──────────┬──────────┘  └──────────┬──────────┘  └─────────────────────┘   │
 │             │                        │                                       │
 │             │ Managed Identity       │ Managed Identity                      │
@@ -63,29 +63,27 @@ The solution uses a pluggable module architecture. Detection capabilities are re
 │                          │  │   Queries subscriptions  │
 │  ┌────────────────────┐  │  │   and management groups: │
 │  │ detection-targets  │  │  │                          │
-│  │ (subs & mgmt grps) │  │  │   • Unattached disks     │
-│  ├────────────────────┤  │  │   • Unused public IPs    │
-│  │ module-registry    │  │  │   • Empty load balancers │
-│  │ (module configs)   │  │  │   • Orphaned NAT GWs     │
-│  ├────────────────────┤  │  │   • Empty SQL pools      │
-│  │ findings-history   │  │  │   • Unused VNet GWs      │
-│  │ (365-day TTL)      │  │  │   • Orphaned DDoS plans  │
-│  ├────────────────────┤  │  │   • Disconnected PEs     │
-│  │ subscription-owners│  │  │                          │
-│  │ (email contacts)   │  │  └──────────────────────────┘
-│  ├────────────────────┤  │
-│  │ execution-logs     │  │
+│  │ (subs, mgmt grps,  │  │  │   • Unattached disks     │
+│  │  owner emails)     │  │  │   • Unused public IPs    │
+│  ├────────────────────┤  │  │   • Empty load balancers │
+│  │ module-registry    │  │  │   • Orphaned NAT GWs     │
+│  │ (module configs)   │  │  │   • Empty SQL pools      │
+│  ├────────────────────┤  │  │   • Unused VNet GWs      │
+│  │ findings-history   │  │  │   • Orphaned DDoS plans  │
+│  │ (365-day TTL)      │  │  │   • Disconnected PEs     │
+│  ├────────────────────┤  │  │                          │
+│  │ execution-logs     │  │  └──────────────────────────┘
 │  │ (90-day TTL)       │  │
 │  └────────────────────┘  │
 └──────────────────────────┘
               │
-              │ Findings grouped by owner
+              │ Findings grouped by target
               ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                               LOGIC APP                                 │
 │                                                                         │
-│  Receives findings per subscription owner ──► Formats HTML email ──►    │
-│  Sends via Office 365 connector                                         │
+│  Receives findings per target ──► Formats HTML email ──►                │
+│  Sends to ownerEmails via Office 365 connector                          │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -99,9 +97,9 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                            AZURE AI FOUNDRY AGENT (GPT-4o)                              │
 │                                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 1. GET DETECTION TARGETS                                                        │    │
+│  │ 1. GET DETECTION TARGETS (with owner info)                                      │    │
 │  │    Call: GET /api/get-detection-targets                                         │    │
-│  │    Response: {targets: [{targetId: "sub-1", targetType: "subscription"}, ...]}  │    │
+│  │    Response: {targets: [{targetId: "sub-1", ownerEmails: ["team@..."]}, ...]}   │    │
 │  │    Agent decides: "I have 5 subscriptions and 2 management groups to scan"      │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
@@ -138,16 +136,8 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                          │                                              │
 │                                          ▼                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 6. GET OWNERS                                                                   │    │
-│  │    Call: POST /api/subscription-owners {subscriptionIds: ["sub-1", "sub-2"]}    │    │
-│  │    Response: [{ownerEmail: "team-a@...", findings: [...]}, ...]                 │    │
-│  │    Agent decides: "Send personalized report with trend context to each owner"   │    │
-│  └─────────────────────────────────────────────────────────────────────────────────┘    │
-│                                          │                                              │
-│                                          ▼                                              │
-│  ┌─────────────────────────────────────────────────────────────────────────────────┐    │
-│  │ 7. SEND NOTIFICATIONS                                                           │    │
-│  │    Call: POST /logic-app/send-email {owner: "...", findings: [...], trends: {}} │    │
+│  │ 6. SEND NOTIFICATIONS                                                           │    │
+│  │    Call: POST /api/send-optimization-email {ownerEmails: [...], findings: [...]}│    │
 │  │    Agent customizes: "Great job reducing abandoned disks from 50 to 22!"        │    │
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                                                                         │
@@ -162,8 +152,8 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │                                                                                          │
 │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐      │
 │  │ Timer  │  │  Get   │  │  Get   │  │  Run   │  │  Save  │  │  Get   │  │  Send  │      │
-│  │Trigger │─►│Targets │─►│Modules │─►│Detect  │─►│Findings│─►│ Owners │─►│ Email  │      │
-│  │Monthly │  │        │  │        │  │        │  │        │  │        │  │        │      │
+│  │Trigger │─►│Targets │─►│Modules │─►│Detect  │─►│Findings│─►│ Trends │─►│ Email  │      │
+│  │Monthly │  │+Owners │  │        │  │        │  │        │  │        │  │        │      │
 │  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘      │
 │                  │            │           │           │           │           │          │
 │             Tool Call    Tool Call   Tool Call   Tool Call   Tool Call   Tool Call       │
@@ -214,7 +204,7 @@ The agent also retrieves **historical trends** for month-over-month context:
 
 The agent uses this data to:
 - **Prioritize**: Focus on critical/high severity findings first
-- **Group**: Organize findings by subscription owner for personalized reports
+- **Group**: Organize findings by target for personalized reports
 - **Recommend**: Suggest remediation actions based on resource type
 - **Summarize**: Create executive summaries of optimization opportunities
 - **Contextualize**: Add historical trends to show progress or highlight regressions
@@ -225,7 +215,7 @@ The agent uses this data to:
 |----------|-----|---------|
 | **AI Foundry Agent** | GPT-4o | Orchestrates detection, analysis, and notification |
 | **Function App** | Consumption | Hosts Data Layer + Detection Layer APIs |
-| **Cosmos DB** | Serverless | Stores modules, findings, owners, logs |
+| **Cosmos DB** | Serverless | Stores modules, findings, targets, logs |
 | **Logic App** | Consumption | Sends personalized emails via O365 |
 | **Resource Graph** | - | Cross-subscription resource queries |
 | **Log Analytics** | - | Centralized logging |
@@ -240,9 +230,9 @@ The agent uses this data to:
 ┌─────────────────┐                   ┌─────────────────┐                   ┌─────────────────┐
 │                 │                   │                 │                   │                 │
 │  Resource Graph │────── Findings ──►│    Cosmos DB    │───── Grouped ────►│    Logic App    │
-│      Query      │                   │                 │      by owner     │                 │
+│      Query      │                   │                 │      by target    │                 │
 │                 │                   │  - findingId    │                   │  - HTML email   │
-│  KQL queries    │                   │  - resourceId   │                   │  - Per owner    │
+│  KQL queries    │                   │  - resourceId   │                   │  - Per target   │
 │  across target  │                   │  - severity     │                   │  - Monthly      │
 │  subs & mgmt    │                   │  - cost         │                   │                 │
 │                 │                   │  - confidence   │                   │                 │
@@ -292,7 +282,7 @@ python scripts/test_detector_live.py --all-types
 | Document | Description |
 |----------|-------------|
 | [Deployment Guide](docs/solution-docs/deployment-guide.md) | Step-by-step deployment instructions |
-| [Detection Targets & Owners](docs/solution-docs/detection-targets.md) | Configure subscriptions, management groups, and owners |
+| [Detection Targets](docs/solution-docs/detection-targets.md) | Configure subscriptions, management groups, and owner emails |
 | [Design Specification](docs/project-management/SPECIFICATION.md) | Full architecture and specifications |
 | [Module Contracts](docs/solution-docs/module-contracts.md) | Input/output schemas for detection modules |
 | [Module Registration](docs/solution-docs/module-registration.md) | How to register modules in Cosmos DB |

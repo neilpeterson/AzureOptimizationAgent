@@ -17,7 +17,6 @@ from data_layer.get_module_registry import get_module_registry
 from data_layer.save_findings import save_findings
 from data_layer.get_findings_history import get_findings_history
 from data_layer.get_findings_trends import get_findings_trends
-from data_layer.get_subscription_owners import get_subscription_owners
 from data_layer.get_detection_targets import get_detection_targets
 from detection_layer.abandoned_resources import detect_from_dict
 
@@ -224,54 +223,6 @@ def get_findings_trends_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
-@app.route(route="get-subscription-owners", methods=["POST"])
-def get_subscription_owners_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Get subscription owner information for notifications.
-
-    POST /api/get-subscription-owners
-    Body:
-        {
-            "subscriptionIds": ["sub-1", "sub-2"]
-        }
-
-    Returns:
-        200: List of subscription owner mappings
-        400: Invalid request body
-        500: Error response
-    """
-    try:
-        body = req.get_json()
-    except ValueError:
-        return func.HttpResponse(
-            json.dumps({"error": "Invalid JSON body"}),
-            mimetype="application/json",
-            status_code=400,
-        )
-
-    try:
-        subscription_ids = body.get("subscriptionIds", [])
-        if not subscription_ids:
-            return func.HttpResponse(
-                json.dumps({"error": "subscriptionIds is required"}),
-                mimetype="application/json",
-                status_code=400,
-            )
-
-        result = get_subscription_owners(subscription_ids=subscription_ids)
-        return func.HttpResponse(
-            json.dumps(result, default=str),
-            mimetype="application/json",
-            status_code=200,
-        )
-    except Exception as e:
-        logger.exception("Error getting subscription owners")
-        return func.HttpResponse(
-            json.dumps({"error": str(e)}),
-            mimetype="application/json",
-            status_code=500,
-        )
-
-
 @app.route(route="get-detection-targets", methods=["GET"])
 def get_detection_targets_handler(req: func.HttpRequest) -> func.HttpResponse:
     """Get detection targets (subscriptions and management groups to scan).
@@ -382,11 +333,13 @@ def abandoned_resources_handler(req: func.HttpRequest) -> func.HttpResponse:
 def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
     """Send optimization report email via Logic App.
 
+    Supports multiple recipients for notifications.
+
     POST /api/send-optimization-email
     Body:
         {
-            "ownerEmail": "owner@example.com",
-            "ownerName": "John Doe",
+            "ownerEmails": ["owner@example.com", "team@example.com"],
+            "ownerNames": ["John Doe", "Team DL"],
             "subscriptionId": "sub-123",
             "subscriptionName": "Production",
             "findings": [...],
@@ -418,9 +371,10 @@ def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # Validate required fields
-    if not body.get("ownerEmail") or not body.get("subscriptionId") or not body.get("findings"):
+    owner_emails = body.get("ownerEmails", [])
+    if not owner_emails or not body.get("subscriptionId") or not body.get("findings"):
         return func.HttpResponse(
-            json.dumps({"error": "ownerEmail, subscriptionId, and findings are required"}),
+            json.dumps({"error": "ownerEmails, subscriptionId, and findings are required"}),
             mimetype="application/json",
             status_code=400,
         )

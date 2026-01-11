@@ -96,10 +96,9 @@ All modules output findings with these required fields:
 
 | Container | Partition Key | Purpose |
 |-----------|--------------|---------|
-| `detection-targets` | `/targetId` | Subscriptions and management groups to scan |
+| `detection-targets` | `/targetId` | Subscriptions and management groups to scan (includes owner info) |
 | `module-registry` | `/moduleId` | Module configuration |
 | `findings-history` | `/subscriptionId` | Historical findings (365-day TTL) |
-| `subscription-owners` | `/subscriptionId` | Owner mapping (manual, interim) |
 | `execution-logs` | `/executionId` | Audit trail (90-day TTL) |
 
 ## Detection Targets
@@ -117,7 +116,10 @@ Detection targets define which subscriptions and management groups to scan. Targ
   "enabled": true,
   "teamId": "team-platform",
   "teamName": "Platform Engineering",
-  "ownerEmail": "platform@contoso.com"
+  "ownerEmails": ["platform@contoso.com", "finops@contoso.com"],
+  "ownerNames": ["Platform Team", "FinOps Team"],
+  "notificationPreferences": {"timezone": "UTC", "language": "en-US"},
+  "costCenter": "CC-1001"
 }
 ```
 
