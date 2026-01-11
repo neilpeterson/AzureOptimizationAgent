@@ -1,18 +1,18 @@
 # Azure Optimization Agent
 
-The Azure Optimization Agent is an agentic solution that automatically identifies cost optimization opportunities across a large fleet of Azure subscriptions. An Azure AI Foundry Agent (GPT-4o) orchestrates the entire workflow—querying for abandoned resources, analyzing findings, and delivering personalized monthly reports to subscription owners.
+The Azure Optimization Agent is an agentic solution that automatically identifies resource optimization opportunities across a large fleet of Azure subscriptions. An Azure AI Foundry Agent (GPT-4o) orchestrates the entire workflow—querying for optimization targets, analyzing findings, and delivering personalized monthly reports to subscription owners.
 
 ### How It Works
 
 1. **Targeting**: Configure which subscriptions and management groups to scan via the `detection-targets` container (includes owner contact info)
 2. **Orchestration**: An AI agent receives a monthly timer trigger, retrieves targets, and decides which detection modules to run
-3. **Detection**: Azure Functions query Azure Resource Graph to find optimization opportunities (unattached disks, unused public IPs, empty load balancers, etc.)
+3. **Detection**: Azure Functions query Azure Resource Graph to find optimization opportunities (unattached disks, unused public IPs, overprovisioned virtual machines, etc.)
 4. **Storage**: Findings are persisted to Cosmos DB with confidence scores, cost estimates, and severity classifications
 5. **Notification**: A Logic App sends personalized HTML emails to subscription owners with actionable recommendations
 
 ### Modular & Extensible
 
-The solution uses a pluggable module architecture. Detection capabilities are registered in Cosmos DB and implement a standard interface contract. To add new optimization detection (e.g., overprovisioned VMs, idle databases):
+The solution uses a pluggable module architecture. Detection capabilities are registered in Cosmos DB and implement a standard interface contract. To add new optimization detection (e.g., overprovisioned VMs, idle databases, security misconfigurations, compliance gaps):
 
 1. Create a new detection module implementing the [`ModuleInput → ModuleOutput`](docs/solution-docs/module-contracts.md) contract
 2. [Register the module](docs/solution-docs/module-registration.md) in the `module-registry` container
@@ -116,7 +116,7 @@ The Azure AI Foundry Agent (GPT-4o) acts as the orchestrator. On a monthly sched
 │  │ 3. RUN DETECTION                                                                │    │
 │  │    Call: POST /api/abandoned-resources {subscriptionIds: [...]}                 │    │
 │  │    Response: {findings: [...], summary: {totalSavings: $2,847, ...}}            │    │
-│  │    Agent analyzes: "Found 47 findings, $2,847/month potential savings"          │    │
+│  │    Agent analyzes: "Found 47 findings "                                         |    |
 │  └─────────────────────────────────────────────────────────────────────────────────┘    │
 │                                          │                                              │
 │                                          ▼                                              │
@@ -205,15 +205,15 @@ The agent also retrieves **historical trends** for month-over-month context:
 The agent uses this data to:
 - **Prioritize**: Focus on critical/high severity findings first
 - **Group**: Organize findings by target for personalized reports
-- **Recommend**: Suggest remediation actions based on resource type
-- **Summarize**: Create executive summaries of optimization opportunities
+- **Recommend**: Suggest remediation actions based on resource type and optimization category
+- **Summarize**: Create executive summaries of optimization opportunities (cost, performance, security, compliance)
 - **Contextualize**: Add historical trends to show progress or highlight regressions
 
 ## Azure Resources
 
 | Resource | SKU | Purpose |
 |----------|-----|---------|
-| **AI Foundry Agent** | GPT-4o | Orchestrates detection, analysis, and notification |
+| **AI Foundry Agent** | GPT-4o | Orchestrates detection, analysis, and notification for optimization opportunities |
 | **Function App** | Consumption | Hosts Data Layer + Detection Layer APIs |
 | **Cosmos DB** | Serverless | Stores modules, findings, targets, logs |
 | **Logic App** | Consumption | Sends personalized emails via O365 |
