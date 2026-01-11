@@ -10,8 +10,8 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
 ## Workflow:
 
 ### 1. **Pre-Scrub Assessment**
-   - Read `STATUS.md` to understand current project state
-   - Read `PLAN.md` to understand implementation roadmap
+   - Read `docs/project-management/STATUS.md` to understand current project state
+   - Read `docs/project-management/PLAN.md` to understand implementation roadmap
    - Create a checklist of areas to review
    - Ask user if there are specific areas of concern
 
@@ -118,7 +118,7 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
    - Verify data contracts match models.py
    - Check severity/confidence thresholds are accurate
 
-   **B. STATUS.md:**
+   **B. docs/project-management/STATUS.md:**
    - Update phase completion status
    - Move completed items from "In Progress" to done
    - Add any new tasks discovered
@@ -126,13 +126,13 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
    - Remove stale entries
    - Verify blockers are current
 
-   **C. PLAN.md:**
+   **C. docs/project-management/PLAN.md:**
    - Verify implementation phases match current state
    - Check file lists are accurate
    - Update resource descriptions if changed
    - Verify dependencies between phases
 
-   **D. docs/shared-library.md:**
+   **D. docs/solution-docs/shared-library.md:**
    - Verify architecture diagrams are current
    - Check code examples work
    - Update function signatures if changed
@@ -143,6 +143,17 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
    - Check feature list matches implementation
    - Ensure deployment instructions are current
    - Verify links are not broken
+
+   **F. File Structure Diagrams:**
+   - Find all docs containing directory tree representations (├──, └──, │)
+   - Compare documented structures against actual file system
+   - Key files to check:
+     - `docs/project-management/PLAN.md` - Main directory structure
+     - `docs/solution-docs/shared-library.md` - Module structure
+     - `.claude/commands/project-status.md` - Architecture summary
+   - Update any outdated structures to match actual implementation
+   - Ensure `__init__.py` files are included where they exist
+   - Verify new files/directories added since last update are documented
 
 ### 6. **KQL Query Review**
 
@@ -220,14 +231,7 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
    - Warnings that should be addressed
    - Modularity violations found and fixed
 
-### 11. **Update Status**
-
-   - Update `STATUS.md` with scrub completion
-   - Add entry to "Notes" section with date
-   - Note any technical debt identified
-   - Update phase status if applicable
-
-### 12. **Commit Changes**
+### 11. **Commit Changes**
 
    - Stage all changes
    - Create detailed commit message explaining cleanup
@@ -290,10 +294,11 @@ Grep: pattern="microsoft\\.[a-z]+/" glob="*.py"
 - ✅ No unnecessary files remain
 - ✅ Dependencies are minimal and up to date
 - ✅ Code follows modularity principle (shared vs module-specific)
-- ✅ STATUS.md accurately reflects project state
+- ✅ `docs/project-management/STATUS.md` accurately reflects project state
 - ✅ No sensitive data in repository
 - ✅ All models and contracts are documented
 - ✅ Architecture diagrams match implementation
+- ✅ File structure diagrams in docs match actual file system
 
 ## Example Usage:
 

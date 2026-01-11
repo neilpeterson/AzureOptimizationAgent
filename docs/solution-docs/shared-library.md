@@ -58,6 +58,7 @@ The shared library contains **generic, reusable components** that any detection 
 ```
 src/functions/
 ├── shared/                          # Generic utilities
+│   ├── __init__.py                  # Public API exports
 │   ├── models.py                    # Data contracts
 │   ├── cosmos_client.py             # Database operations
 │   ├── resource_graph.py            # Query execution
@@ -65,7 +66,9 @@ src/functions/
 │   └── cost_calculator.py           # Severity classification
 │
 └── detection_layer/
+    ├── __init__.py
     └── abandoned_resources/         # Module-specific
+        ├── __init__.py
         ├── config.py                # Configuration schema
         ├── queries.py               # KQL queries
         ├── confidence.py            # Confidence scoring logic

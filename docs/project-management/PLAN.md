@@ -19,36 +19,65 @@ OptimizationAgent/
 │   ├── functions/                  # Azure Functions (Python)
 │   │   ├── function_app.py
 │   │   ├── requirements.txt
+│   │   ├── host.json
 │   │   ├── shared/
+│   │   │   ├── __init__.py
 │   │   │   ├── models.py           # Pydantic data contracts
 │   │   │   ├── cosmos_client.py    # Cosmos DB wrapper
 │   │   │   ├── resource_graph.py   # Resource Graph helper
 │   │   │   ├── confidence.py       # Confidence scoring
 │   │   │   └── cost_calculator.py  # Cost estimation
 │   │   ├── data_layer/
+│   │   │   ├── __init__.py
 │   │   │   ├── get_module_registry.py
+│   │   │   ├── get_detection_targets.py
 │   │   │   ├── save_findings.py
 │   │   │   ├── get_findings_history.py
 │   │   │   ├── get_findings_trends.py
 │   │   │   └── get_subscription_owners.py
 │   │   └── detection_layer/
+│   │       ├── __init__.py
 │   │       └── abandoned_resources/
+│   │           ├── __init__.py
 │   │           ├── detector.py     # Main detection logic
 │   │           ├── queries.py      # KQL queries
 │   │           ├── config.py       # Module configuration
 │   │           ├── confidence.py   # Module-specific confidence
 │   │           └── cost_calculator.py
 │   ├── agent/
+│   │   ├── __init__.py
 │   │   ├── system_prompt.txt
 │   │   ├── tool_definitions.json
 │   │   └── run_agent.py
 │   └── logic-apps/
-│       └── send-optimization-email/
+│       ├── send-optimization-email/
+│       │   ├── workflow.json
+│       │   └── connections.json
+│       └── templates/
+│           └── email-template.html
+├── scripts/                        # Test and utility scripts
+│   ├── test_detector_live.py
+│   └── test_data_layer_live.py
+├── docs/
+│   ├── project-management/         # Planning and status docs
+│   │   ├── PLAN.md
+│   │   ├── STATUS.md
+│   │   └── SPECIFICATION.md
+│   └── solution-docs/              # Technical documentation
+│       ├── api-reference.md
+│       ├── deployment-guide.md
+│       ├── detection-targets.md
+│       ├── module-contracts.md
+│       ├── module-registration.md
+│       └── shared-library.md
 ├── tests/
 │   ├── unit/
 │   └── integration/
 └── data/
     └── seed/                       # Initial Cosmos DB data
+        ├── module-registry.json
+        ├── detection-targets.sample.json
+        └── subscription-owners.sample.json
 ```
 
 ---

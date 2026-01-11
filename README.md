@@ -14,8 +14,8 @@ The Azure Optimization Agent is an agentic solution that automatically identifie
 
 The solution uses a pluggable module architecture. Detection capabilities are registered in Cosmos DB and implement a standard interface contract. To add new optimization detection (e.g., overprovisioned VMs, idle databases):
 
-1. Create a new detection module implementing the [`ModuleInput → ModuleOutput`](docs/module-contracts.md) contract
-2. [Register the module](docs/module-registration.md) in the `module-registry` container
+1. Create a new detection module implementing the [`ModuleInput → ModuleOutput`](docs/solution-docs/module-contracts.md) contract
+2. [Register the module](docs/solution-docs/module-registration.md) in the `module-registry` container
 3. The AI agent automatically discovers and executes enabled modules
 
 ## Architecture
@@ -291,13 +291,13 @@ python scripts/test_detector_live.py --all-types
 
 | Document | Description |
 |----------|-------------|
-| [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment instructions |
-| [Detection Targets & Owners](docs/detection-targets.md) | Configure subscriptions, management groups, and owners |
-| [Design Document](OptimizationAgent.md) | Full architecture and specifications |
-| [Module Contracts](docs/module-contracts.md) | Input/output schemas for detection modules |
-| [Module Registration](docs/module-registration.md) | How to register modules in Cosmos DB |
-| [Shared Library Guide](docs/shared-library.md) | Adding new detection modules |
-| [Implementation Status](STATUS.md) | Current progress |
+| [Deployment Guide](docs/solution-docs/deployment-guide.md) | Step-by-step deployment instructions |
+| [Detection Targets & Owners](docs/solution-docs/detection-targets.md) | Configure subscriptions, management groups, and owners |
+| [Design Specification](docs/project-management/SPECIFICATION.md) | Full architecture and specifications |
+| [Module Contracts](docs/solution-docs/module-contracts.md) | Input/output schemas for detection modules |
+| [Module Registration](docs/solution-docs/module-registration.md) | How to register modules in Cosmos DB |
+| [Shared Library Guide](docs/solution-docs/shared-library.md) | Adding new detection modules |
+| [Implementation Status](docs/project-management/STATUS.md) | Current progress |
 
 ## License
 
