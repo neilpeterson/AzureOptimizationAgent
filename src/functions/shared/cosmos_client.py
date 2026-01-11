@@ -16,7 +16,6 @@ class CosmosClient:
     # Container names
     MODULE_REGISTRY = "module-registry"
     FINDINGS_HISTORY = "findings-history"
-    SUBSCRIPTION_OWNERS = "subscription-owners"
     EXECUTION_LOGS = "execution-logs"
     DETECTION_TARGETS = "detection-targets"
 
@@ -150,34 +149,6 @@ class CosmosClient:
             container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
         )
         return results[0] if results else None
-
-    # Subscription Owners operations
-    def get_subscription_owner(self, subscription_id: str) -> dict[str, Any] | None:
-        """Get owner info for a subscription."""
-        container = self._get_container(self.SUBSCRIPTION_OWNERS)
-        try:
-            return container.read_item(item=subscription_id, partition_key=subscription_id)
-        except CosmosResourceNotFoundError:
-            return None
-
-    def get_subscription_owners(self, subscription_ids: list[str]) -> list[dict[str, Any]]:
-        """Get owners for multiple subscriptions."""
-        container = self._get_container(self.SUBSCRIPTION_OWNERS)
-        # Use IN clause for batch lookup
-        placeholders = ", ".join([f"@sub{i}" for i in range(len(subscription_ids))])
-        query = f"SELECT * FROM c WHERE c.subscriptionId IN ({placeholders})"
-        parameters = [
-            {"name": f"@sub{i}", "value": sub_id}
-            for i, sub_id in enumerate(subscription_ids)
-        ]
-        return list(
-            container.query_items(query, parameters=parameters, enable_cross_partition_query=True)
-        )
-
-    def upsert_subscription_owner(self, owner: dict[str, Any]) -> None:
-        """Create or update a subscription owner mapping."""
-        container = self._get_container(self.SUBSCRIPTION_OWNERS)
-        container.upsert_item(owner)
 
     # Execution Logs operations
     def create_execution_log(self, log: dict[str, Any]) -> None:

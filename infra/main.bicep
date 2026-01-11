@@ -182,21 +182,6 @@ resource containerFindingsHistory 'Microsoft.DocumentDB/databaseAccounts/sqlData
   }
 }
 
-// Container: subscription-owners
-resource containerSubscriptionOwners 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
-  parent: cosmosDbDatabase
-  name: 'subscription-owners'
-  properties: {
-    resource: {
-      id: 'subscription-owners'
-      partitionKey: {
-        paths: ['/subscriptionId']
-        kind: 'Hash'
-      }
-    }
-  }
-}
-
 // Container: execution-logs (90-day TTL)
 resource containerExecutionLogs 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
   parent: cosmosDbDatabase

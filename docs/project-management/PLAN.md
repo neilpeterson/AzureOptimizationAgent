@@ -33,8 +33,7 @@ OptimizationAgent/
 │   │   │   ├── get_detection_targets.py
 │   │   │   ├── save_findings.py
 │   │   │   ├── get_findings_history.py
-│   │   │   ├── get_findings_trends.py
-│   │   │   └── get_subscription_owners.py
+│   │   │   └── get_findings_trends.py
 │   │   └── detection_layer/
 │   │       ├── __init__.py
 │   │       └── abandoned_resources/
@@ -76,8 +75,7 @@ OptimizationAgent/
 └── data/
     └── seed/                       # Initial Cosmos DB data
         ├── module-registry.json
-        ├── detection-targets.sample.json
-        └── subscription-owners.sample.json
+        └── detection-targets.sample.json
 ```
 
 ---
@@ -107,9 +105,9 @@ OptimizationAgent/
 - Network Security Perimeter with Storage and Cosmos DB associations (Learning mode)
 
 **Cosmos DB Containers:**
+- `detection-targets` (partition: `/targetId`) - Subscriptions/management groups with owner info
 - `module-registry` (partition: `/moduleId`)
 - `findings-history` (partition: `/subscriptionId`, TTL: 365 days)
-- `subscription-owners` (partition: `/subscriptionId`)
 - `execution-logs` (partition: `/executionId`, TTL: 90 days)
 
 ### Phase 2: Shared Library
@@ -130,7 +128,7 @@ OptimizationAgent/
 | `data_layer/save_findings.py` | `POST /api/save-findings` | Store findings |
 | `data_layer/get_findings_history.py` | `GET /api/get-findings-history` | Query historical findings |
 | `data_layer/get_findings_trends.py` | `GET /api/get-findings-trends` | Month-over-month trends |
-| `data_layer/get_subscription_owners.py` | `POST /api/get-subscription-owners` | Owner lookup |
+| `data_layer/get_detection_targets.py` | `GET /api/get-detection-targets` | Targets with owner info |
 
 ### Phase 4: Detection Layer
 
@@ -242,7 +240,7 @@ pytest tests/integration/test_function_endpoints.py
 
 ### End-to-End Test
 1. Deploy all infrastructure to test environment
-2. Seed `module-registry` and `subscription-owners` with test data
+2. Seed `module-registry` and `detection-targets` with test data
 3. Run agent with `dryRun: true` to validate detection
 4. Run agent against test subscriptions (2-3 with known orphaned resources)
 5. Verify:

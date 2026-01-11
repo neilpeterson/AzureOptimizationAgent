@@ -1,6 +1,6 @@
 # Implementation Status
 
-> Last Updated: 2026-01-11 (Phase 8 planning)
+> Last Updated: 2026-01-11 (Phase 8 complete)
 
 ## Phase 1: Infrastructure ✅
 - [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP
@@ -25,9 +25,9 @@
 - [x] `src/functions/data_layer/save_findings.py`
 - [x] `src/functions/data_layer/get_findings_history.py`
 - [x] `src/functions/data_layer/get_findings_trends.py` - Month-over-month trend analysis (module-agnostic)
-- [x] `src/functions/data_layer/get_subscription_owners.py`
+- [x] `src/functions/data_layer/get_detection_targets.py` - Retrieve detection targets with owner info
 - [x] `data/seed/module-registry.json` - Seed data for abandoned-resources module
-- [x] `data/seed/subscription-owners.sample.json` - Sample owner mappings
+- [x] `data/seed/detection-targets.sample.json` - Sample detection targets with owner info
 - [ ] Integration tests
 
 ## Phase 4: Detection Layer ✅
@@ -74,47 +74,48 @@
 - [x] `README.md` - Updated diagrams and execution flow
 - [x] `CLAUDE.md` - Added detection targets schema
 
-## Phase 8: Consolidate Detection Targets & Subscription Owners 🔄
+## Phase 8: Consolidate Detection Targets & Subscription Owners ✅
 
 **Goal:** Merge `detection-targets` and `subscription-owners` containers into a single `detection-targets` container. Support multiple notification email addresses per target.
 
 ### Schema Changes
-- [ ] `src/functions/shared/models.py` - Update `DetectionTarget` model:
-  - Add `ownerEmails: list[str]` (replaces single `ownerEmail`)
-  - Add `ownerNames: list[str]` (optional, for email personalization)
-  - Add `notificationPreferences: dict` (timezone, language)
-  - Remove `SubscriptionOwner` model (no longer needed)
-- [ ] `data/seed/detection-targets.sample.json` - Update sample with new fields
+- [x] `src/functions/shared/models.py` - Updated `DetectionTarget` model:
+  - Added `ownerEmails: list[str]` (supports multiple recipients)
+  - Added `ownerNames: list[str]` (optional, for email personalization)
+  - Added `notificationPreferences: NotificationPreferences` (timezone, language)
+  - Added `costCenter: str` (optional)
+  - Removed `SubscriptionOwner` model (no longer needed)
+- [x] `data/seed/detection-targets.sample.json` - Updated sample with new fields
 
 ### Data Layer Changes
-- [ ] `src/functions/shared/cosmos_client.py` - Remove subscription-owners methods
-- [ ] `src/functions/data_layer/get_subscription_owners.py` - Delete file
-- [ ] `src/functions/data_layer/__init__.py` - Remove get_subscription_owners export
-- [ ] `src/functions/function_app.py` - Remove `/api/get-subscription-owners` endpoint
-- [ ] `src/functions/function_app.py` - Update `/api/get-detection-targets` to return owner info
+- [x] `src/functions/shared/cosmos_client.py` - Removed subscription-owners methods
+- [x] `src/functions/data_layer/get_subscription_owners.py` - Deleted file
+- [x] `src/functions/data_layer/__init__.py` - Removed get_subscription_owners export
+- [x] `src/functions/function_app.py` - Removed `/api/get-subscription-owners` endpoint
+- [x] `/api/get-detection-targets` - Returns owner info automatically
 
 ### Infrastructure Changes
-- [ ] `infra/main.bicep` - Remove `subscription-owners` container from Cosmos DB
+- [x] `infra/main.bicep` - Removed `subscription-owners` container from Cosmos DB
 
 ### Agent Changes
-- [ ] `src/agent/tool_definitions.json` - Remove `get_subscription_owners` tool
-- [ ] `src/agent/tool_definitions.json` - Update `get_detection_targets` response schema
-- [ ] `src/agent/system_prompt.txt` - Update workflow (remove step to get owners separately)
-- [ ] `src/agent/run_agent.py` - Update to use detection targets for owner info
+- [x] `src/agent/tool_definitions.json` - Removed `get_subscription_owners` tool
+- [x] `src/agent/tool_definitions.json` - Updated `get_detection_targets` and `send_optimization_email` schemas
+- [x] `src/agent/system_prompt.txt` - Updated to 6-step workflow (removed separate owner lookup)
+- [x] `src/agent/run_agent.py` - Updated to use detection targets for owner info
 
 ### Notification Layer Changes
-- [ ] `src/functions/function_app.py` - Update `send-optimization-email` to handle multiple recipients
-- [ ] `src/logic-apps/send-optimization-email/workflow.json` - Support multiple To addresses
+- [x] `src/functions/function_app.py` - Updated `send-optimization-email` to handle `ownerEmails` array
+- [x] `src/logic-apps/send-optimization-email/workflow.json` - Support multiple recipients (joined with semicolons)
 
 ### Documentation Changes
-- [ ] `docs/detection-targets.md` - Update schema documentation
-- [ ] `docs/deployment-guide.md` - Remove subscription-owners seeding steps
-- [ ] `docs/api-reference.md` - Remove get-subscription-owners, update get-detection-targets
-- [ ] `CLAUDE.md` - Update container list and schema
+- [x] `docs/solution-docs/detection-targets.md` - Consolidated schema documentation
+- [x] `docs/solution-docs/deployment-guide.md` - Removed subscription-owners seeding steps
+- [x] `docs/solution-docs/api-reference.md` - Removed get-subscription-owners, updated endpoints
+- [x] `CLAUDE.md` - Updated container list and schema
 
 ### Cleanup
-- [ ] Remove `data/seed/subscription-owners.sample.json`
-- [ ] Run `/scrub` to verify no dead code
+- [x] Removed `data/seed/subscription-owners.sample.json`
+- [x] Run `/scrub` to verify no dead code - all stale references updated
 
 ## Testing & Validation
 - [x] `scripts/test_detector_live.py` - Live detector test against Azure subscriptions
@@ -147,9 +148,4 @@
 
 ## Technical Debt / Revisit
 
-### `get-subscription-owners` uses POST instead of GET
-- **Location:** `function_app.py` line ~150, `tool_definitions.json`
-- **Issue:** Endpoint is semantically a read operation but uses POST to accept `subscriptionIds` array in request body
-- **Rationale:** POST avoids URL length limits (~2000-8000 chars) when looking up many subscriptions
-- **Options:** (1) Keep POST for pragmatism, (2) Change to GET with comma-separated query param, (3) Support both
-- **Recommendation:** Revisit if API consistency becomes a priority; current approach works fine
+- None currently tracked

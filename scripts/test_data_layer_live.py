@@ -104,15 +104,6 @@ def seed_test_data(cosmos_client):
             cosmos_client._get_container("module-registry").upsert_item(module)
             print(f"  Seeded module: {module['moduleId']}")
 
-    # Seed subscription owners (sample)
-    owners_file = seed_dir / "subscription-owners.sample.json"
-    if owners_file.exists():
-        with open(owners_file) as f:
-            owners = json.load(f)
-        for owner in owners:
-            cosmos_client._get_container("subscription-owners").upsert_item(owner)
-            print(f"  Seeded owner: {owner['subscriptionId'][:8]}...")
-
     print("Seed data loaded successfully!")
 
 
@@ -204,35 +195,6 @@ def test_get_findings_history():
     return True
 
 
-def test_get_subscription_owners():
-    """Test the get_subscription_owners function."""
-    print("\n" + "-" * 60)
-    print("TEST: get_subscription_owners")
-    print("-" * 60)
-
-    from data_layer import get_subscription_owners
-
-    # Query for sample subscription IDs
-    result = get_subscription_owners(
-        subscription_ids=[
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
-            "nonexistent-subscription",
-        ]
-    )
-
-    print(f"Found: {result['found']} owners")
-    print(f"Not found: {len(result['notFound'])} subscriptions")
-
-    for owner in result['owners']:
-        print(f"  - {owner['subscriptionId'][:8]}...: {owner.get('ownerEmail')}")
-
-    if result['notFound']:
-        print(f"  Missing: {result['notFound']}")
-
-    return True
-
-
 def main():
     parser = argparse.ArgumentParser(description="Test data layer functions")
     parser.add_argument(
@@ -288,12 +250,6 @@ def main():
     except Exception as e:
         print(f"FAILED: {e}")
         results['get_findings_history'] = False
-
-    try:
-        results['get_subscription_owners'] = test_get_subscription_owners()
-    except Exception as e:
-        print(f"FAILED: {e}")
-        results['get_subscription_owners'] = False
 
     # Summary
     print("\n" + "=" * 60)

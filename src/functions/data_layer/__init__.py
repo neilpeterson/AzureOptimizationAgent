@@ -4,15 +4,13 @@ This module provides HTTP-triggered functions for managing data in Cosmos DB:
 - Module registry (list enabled modules)
 - Findings history (store and query findings)
 - Findings trends (month-over-month analysis)
-- Subscription owners (owner contact lookup)
-- Detection targets (subscriptions and management groups to scan)
+- Detection targets (subscriptions/management groups with owner info)
 """
 
 from data_layer.get_module_registry import get_module_registry
 from data_layer.save_findings import save_findings
 from data_layer.get_findings_history import get_findings_history
 from data_layer.get_findings_trends import get_findings_trends
-from data_layer.get_subscription_owners import get_subscription_owners
 from data_layer.get_detection_targets import get_detection_targets
 
 __all__ = [
@@ -20,6 +18,5 @@ __all__ = [
     "save_findings",
     "get_findings_history",
     "get_findings_trends",
-    "get_subscription_owners",
     "get_detection_targets",
 ]

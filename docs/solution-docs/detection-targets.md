@@ -1,40 +1,40 @@
-# Detection Targets & Subscription Owners
+# Detection Targets
 
-This document explains how to configure which Azure subscriptions and management groups to scan, and how to map them to owners for notifications.
+This document explains how to configure which Azure subscriptions and management groups to scan, and how owner information is managed for notifications.
 
 ## Overview
 
-The solution uses two Cosmos DB containers to manage targeting and ownership:
+The solution uses the `detection-targets` Cosmos DB container to manage both targeting and ownership in a single, consolidated schema.
 
 | Container | Purpose | Partition Key |
 |-----------|---------|---------------|
-| `detection-targets` | Define which subscriptions/management groups to scan | `/targetId` |
-| `subscription-owners` | Map subscriptions to owners for email notifications | `/subscriptionId` |
+| `detection-targets` | Define targets to scan with owner contact info | `/targetId` |
 
 ```
-┌─────────────────────────┐     ┌─────────────────────────┐
-│   detection-targets     │     │   subscription-owners   │
-│                         │     │                         │
-│  • Subscriptions        │     │  • Owner email          │
-│  • Management groups    │     │  • Team name            │
-│  • Enable/disable       │────►│  • Cost center          │
-│  • Team assignment      │     │  • Notification prefs   │
-│                         │     │                         │
-└─────────────────────────┘     └─────────────────────────┘
-           │                               │
-           │  Agent retrieves targets      │  Agent looks up owners
-           ▼                               ▼
-    ┌─────────────────────────────────────────────────┐
-    │              AI Agent Workflow                  │
-    │                                                 │
-    │  1. Get targets → 2. Run detection →            │
-    │  3. Get owners → 4. Send personalized emails    │
-    └─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│                    detection-targets              │
+│                                                   │
+│  • Subscriptions and management groups to scan    │
+│  • Enable/disable scanning                        │
+│  • Team assignment                                │
+│  • Owner emails (supports multiple recipients)    │
+│  • Owner names                                    │
+│  • Notification preferences                       │
+│  • Cost center                                    │
+│                                                   │
+└───────────────────────────────────────────────────┘
+                          │
+                          │  Agent retrieves targets with owner info
+                          ▼
+    ┌─────────────────────────────────────────────────────┐
+    │              AI Agent Workflow                      │
+    │                                                     │
+    │  1. Get targets → 2. Run detection →                │
+    │  3. Save findings → 4. Send personalized emails     │
+    └─────────────────────────────────────────────────────┘
 ```
 
-## Detection Targets
-
-### Schema
+## Detection Target Schema
 
 ```json
 {
@@ -45,18 +45,23 @@ The solution uses two Cosmos DB containers to manage targeting and ownership:
   "enabled": true,
   "teamId": "team-platform",
   "teamName": "Platform Engineering",
-  "ownerEmail": "platform-team@contoso.com",
+  "ownerEmails": ["platform-team@contoso.com", "finops@contoso.com"],
+  "ownerNames": ["Platform Team DL", "FinOps Team"],
+  "notificationPreferences": {
+    "timezone": "America/Los_Angeles",
+    "language": "en-US"
+  },
+  "costCenter": "CC-1001",
   "description": "Main production workloads",
   "tags": {
-    "environment": "production",
-    "costCenter": "CC-1001"
+    "environment": "production"
   },
   "createdDate": "2026-01-11T00:00:00Z",
   "lastModifiedDate": "2026-01-11T00:00:00Z"
 }
 ```
 
-### Fields
+## Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -67,15 +72,25 @@ The solution uses two Cosmos DB containers to manage targeting and ownership:
 | `enabled` | boolean | Yes | Whether to include in scans |
 | `teamId` | string | No | Team identifier for grouping |
 | `teamName` | string | No | Team display name |
-| `ownerEmail` | string | No | Primary contact email |
+| `ownerEmails` | array | No | Email addresses for notifications (supports multiple) |
+| `ownerNames` | array | No | Display names of owners (parallel to ownerEmails) |
+| `notificationPreferences` | object | No | Notification settings (timezone, language) |
+| `costCenter` | string | No | Cost center for reporting |
 | `description` | string | No | Description of the target |
 | `tags` | object | No | Custom key-value tags |
 | `createdDate` | datetime | No | When the target was created |
 | `lastModifiedDate` | datetime | No | When the target was last updated |
 
-### Target Types
+### Notification Preferences
 
-#### Subscription Target
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `timezone` | string | `UTC` | Timezone for email timestamps |
+| `language` | string | `en-US` | Language for email content |
+
+## Target Types
+
+### Subscription Target
 
 Use for individual Azure subscriptions:
 
@@ -88,11 +103,12 @@ Use for individual Azure subscriptions:
   "enabled": true,
   "teamId": "team-infra",
   "teamName": "Infrastructure",
-  "ownerEmail": "infra@contoso.com"
+  "ownerEmails": ["infra@contoso.com"],
+  "ownerNames": ["Infrastructure Team"]
 }
 ```
 
-#### Management Group Target
+### Management Group Target
 
 Use to scan all subscriptions under a management group:
 
@@ -105,14 +121,15 @@ Use to scan all subscriptions under a management group:
   "enabled": true,
   "teamId": "team-finops",
   "teamName": "FinOps",
-  "ownerEmail": "finops@contoso.com",
+  "ownerEmails": ["finops@contoso.com"],
+  "ownerNames": ["FinOps Team"],
   "description": "All subscriptions under the corporate hierarchy"
 }
 ```
 
-### Adding Detection Targets
+## Adding Detection Targets
 
-#### Via Azure Portal (Data Explorer)
+### Via Azure Portal (Data Explorer)
 
 1. Navigate to your Cosmos DB account
 2. Go to **Data Explorer**
@@ -121,7 +138,7 @@ Use to scan all subscriptions under a management group:
 5. Paste your target JSON document
 6. Click **Save**
 
-#### Via Azure CLI
+### Via Azure CLI
 
 ```bash
 # Get your Cosmos DB endpoint
@@ -134,7 +151,7 @@ COSMOS_ENDPOINT=$(az cosmosdb show \
 # Use the REST API or Azure SDK to insert documents
 ```
 
-### API Endpoint
+## API Endpoint
 
 ```
 GET /api/get-detection-targets
@@ -157,14 +174,18 @@ GET /api/get-detection-targets
       "targetType": "subscription",
       "displayName": "Production",
       "enabled": true,
-      "teamName": "Platform"
+      "teamName": "Platform",
+      "ownerEmails": ["platform@contoso.com", "finops@contoso.com"],
+      "ownerNames": ["Platform Team", "FinOps Team"]
     },
     {
       "targetId": "mg-development",
       "targetType": "managementGroup",
       "displayName": "Development Group",
       "enabled": true,
-      "teamName": "DevOps"
+      "teamName": "DevOps",
+      "ownerEmails": ["devops@contoso.com"],
+      "ownerNames": ["DevOps Team"]
     }
   ],
   "count": 2,
@@ -173,154 +194,58 @@ GET /api/get-detection-targets
 }
 ```
 
-## Subscription Owners
-
-The `subscription-owners` container maps individual subscriptions to owners who should receive notification emails.
-
-### Schema
-
-```json
-{
-  "id": "12345678-1234-1234-1234-123456789abc",
-  "subscriptionId": "12345678-1234-1234-1234-123456789abc",
-  "subscriptionName": "Production - East US",
-  "ownerEmail": "john.doe@contoso.com",
-  "ownerName": "John Doe",
-  "teamName": "Platform Engineering",
-  "costCenter": "CC-1001",
-  "notificationPreferences": {
-    "timezone": "America/Los_Angeles",
-    "language": "en-US"
-  },
-  "lastUpdated": "2026-01-11T00:00:00Z",
-  "dataSource": "manual"
-}
-```
-
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Document ID (same as subscriptionId) |
-| `subscriptionId` | string | Yes | Azure subscription ID |
-| `subscriptionName` | string | No | Human-readable subscription name |
-| `ownerEmail` | string | Yes | Email address for notifications |
-| `ownerName` | string | No | Owner's display name |
-| `teamName` | string | No | Team or department name |
-| `costCenter` | string | No | Cost center for reporting |
-| `notificationPreferences` | object | No | Email preferences (timezone, language) |
-| `lastUpdated` | datetime | No | When the record was last updated |
-| `dataSource` | string | No | How the data was populated (`manual`, `api`, etc.) |
-
-### Adding Subscription Owners
-
-#### Via Azure Portal (Data Explorer)
-
-1. Navigate to your Cosmos DB account
-2. Go to **Data Explorer**
-3. Expand **optimization-db** > **subscription-owners**
-4. Click **New Item**
-5. Paste your owner mapping JSON
-6. Click **Save**
-
-#### Example: Multiple Subscriptions, Same Owner
-
-If one person owns multiple subscriptions, create a document for each:
-
-```json
-// Document 1
-{
-  "id": "sub-prod-001",
-  "subscriptionId": "sub-prod-001",
-  "subscriptionName": "Production",
-  "ownerEmail": "alice@contoso.com",
-  "ownerName": "Alice Smith",
-  "teamName": "Platform"
-}
-
-// Document 2
-{
-  "id": "sub-staging-001",
-  "subscriptionId": "sub-staging-001",
-  "subscriptionName": "Staging",
-  "ownerEmail": "alice@contoso.com",
-  "ownerName": "Alice Smith",
-  "teamName": "Platform"
-}
-```
-
-Alice will receive separate emails for each subscription's findings.
-
-### API Endpoint
-
-```
-POST /api/get-subscription-owners
-```
-
-**Request Body:**
-
-```json
-{
-  "subscriptionIds": ["sub-prod-001", "sub-staging-001"]
-}
-```
-
-**Response:**
-
-```json
-{
-  "owners": [
-    {
-      "subscriptionId": "sub-prod-001",
-      "subscriptionName": "Production",
-      "ownerEmail": "alice@contoso.com",
-      "ownerName": "Alice Smith"
-    },
-    {
-      "subscriptionId": "sub-staging-001",
-      "subscriptionName": "Staging",
-      "ownerEmail": "alice@contoso.com",
-      "ownerName": "Alice Smith"
-    }
-  ],
-  "count": 2,
-  "notFound": []
-}
-```
-
 ## Common Scenarios
 
 ### Scenario 1: Single Team, Multiple Subscriptions
 
-A platform team owns 5 subscriptions. Configure detection targets and owners:
+A platform team owns 5 subscriptions. All notifications go to the team distribution list:
 
-**Detection Targets:**
 ```json
 [
-  {"targetId": "sub-1", "targetType": "subscription", "teamId": "platform", "enabled": true},
-  {"targetId": "sub-2", "targetType": "subscription", "teamId": "platform", "enabled": true},
-  {"targetId": "sub-3", "targetType": "subscription", "teamId": "platform", "enabled": true},
-  {"targetId": "sub-4", "targetType": "subscription", "teamId": "platform", "enabled": true},
-  {"targetId": "sub-5", "targetType": "subscription", "teamId": "platform", "enabled": true}
+  {
+    "targetId": "sub-1",
+    "targetType": "subscription",
+    "displayName": "Prod East",
+    "enabled": true,
+    "teamId": "platform",
+    "teamName": "Platform",
+    "ownerEmails": ["platform@contoso.com"],
+    "ownerNames": ["Platform Team"]
+  },
+  {
+    "targetId": "sub-2",
+    "targetType": "subscription",
+    "displayName": "Prod West",
+    "enabled": true,
+    "teamId": "platform",
+    "teamName": "Platform",
+    "ownerEmails": ["platform@contoso.com"],
+    "ownerNames": ["Platform Team"]
+  }
 ]
 ```
 
-**Subscription Owners:**
+### Scenario 2: Multiple Recipients per Subscription
+
+A subscription has both a technical owner and a FinOps contact:
+
 ```json
-[
-  {"subscriptionId": "sub-1", "ownerEmail": "platform@contoso.com"},
-  {"subscriptionId": "sub-2", "ownerEmail": "platform@contoso.com"},
-  {"subscriptionId": "sub-3", "ownerEmail": "platform@contoso.com"},
-  {"subscriptionId": "sub-4", "ownerEmail": "platform@contoso.com"},
-  {"subscriptionId": "sub-5", "ownerEmail": "platform@contoso.com"}
-]
+{
+  "targetId": "sub-critical-app",
+  "targetType": "subscription",
+  "displayName": "Critical Application",
+  "enabled": true,
+  "ownerEmails": ["app-team@contoso.com", "finops@contoso.com", "manager@contoso.com"],
+  "ownerNames": ["App Team", "FinOps", "Engineering Manager"]
+}
 ```
 
-### Scenario 2: Management Group with Multiple Teams
+All three recipients will receive the optimization report email.
 
-A corporate management group contains subscriptions owned by different teams:
+### Scenario 3: Management Group with Centralized Notifications
 
-**Detection Target:**
+A corporate management group where all findings go to FinOps:
+
 ```json
 {
   "targetId": "mg-corporate",
@@ -328,20 +253,13 @@ A corporate management group contains subscriptions owned by different teams:
   "displayName": "Corporate",
   "enabled": true,
   "teamId": "finops",
-  "ownerEmail": "finops@contoso.com"
+  "teamName": "FinOps",
+  "ownerEmails": ["finops@contoso.com"],
+  "ownerNames": ["FinOps Team"]
 }
 ```
 
-**Subscription Owners** (findings route to the right team):
-```json
-[
-  {"subscriptionId": "sub-sales", "ownerEmail": "sales-ops@contoso.com", "teamName": "Sales"},
-  {"subscriptionId": "sub-hr", "ownerEmail": "hr-tech@contoso.com", "teamName": "HR"},
-  {"subscriptionId": "sub-finance", "ownerEmail": "finance-it@contoso.com", "teamName": "Finance"}
-]
-```
-
-### Scenario 3: Temporarily Disable a Target
+### Scenario 4: Temporarily Disable a Target
 
 To skip a subscription during the next scan, set `enabled: false`:
 
@@ -355,32 +273,31 @@ To skip a subscription during the next scan, set `enabled: false`:
 }
 ```
 
-### Scenario 4: Mixed Targeting
+### Scenario 5: Mixed Targeting
 
 Combine individual subscriptions with management groups:
 
 ```json
 [
-  {"targetId": "mg-production", "targetType": "managementGroup", "enabled": true},
-  {"targetId": "sub-special-project", "targetType": "subscription", "enabled": true},
-  {"targetId": "sub-legacy-app", "targetType": "subscription", "enabled": true}
+  {"targetId": "mg-production", "targetType": "managementGroup", "enabled": true, "ownerEmails": ["prod-ops@contoso.com"]},
+  {"targetId": "sub-special-project", "targetType": "subscription", "enabled": true, "ownerEmails": ["special-project@contoso.com"]},
+  {"targetId": "sub-legacy-app", "targetType": "subscription", "enabled": true, "ownerEmails": ["legacy-support@contoso.com"]}
 ]
 ```
 
 ## Seed Data
 
-Sample seed data is available in `data/seed/`:
+Sample seed data is available in `data/seed/detection-targets.sample.json`.
 
-- `detection-targets.sample.json` - Example targets
-- `subscription-owners.sample.json` - Example owner mappings
-
-Copy and modify these files for your environment, then import via Data Explorer.
+Copy and modify this file for your environment, then import via Data Explorer.
 
 ## Best Practices
 
-1. **Use consistent IDs**: Set `id` equal to `targetId` or `subscriptionId` for simplicity
+1. **Use consistent IDs**: Set `id` equal to `targetId` for simplicity
 2. **Add descriptions**: Document why targets are included/excluded
 3. **Use tags**: Add metadata for filtering and reporting
 4. **Keep owners updated**: Regularly verify email addresses are current
-5. **Start small**: Begin with a few subscriptions, then expand
-6. **Disable vs. delete**: Use `enabled: false` rather than deleting to preserve history
+5. **Use distribution lists**: For team-owned subscriptions, use DLs instead of individual emails
+6. **Start small**: Begin with a few subscriptions, then expand
+7. **Disable vs. delete**: Use `enabled: false` rather than deleting to preserve history
+8. **Multiple recipients**: Add both technical owners and FinOps contacts for visibility

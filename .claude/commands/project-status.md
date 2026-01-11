@@ -67,8 +67,7 @@ Provide a comprehensive status report for the Azure Optimization Agent project.
    │   ├── get_detection_targets.py
    │   ├── save_findings.py
    │   ├── get_findings_history.py
-   │   ├── get_findings_trends.py
-   │   └── get_subscription_owners.py
+   │   └── get_findings_trends.py
    └── detection_layer/  # Detection Modules (Phase 4)
        ├── __init__.py
        └── abandoned_resources/

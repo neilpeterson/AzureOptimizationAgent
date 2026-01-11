@@ -185,33 +185,6 @@ class NotificationPreferences(BaseModel):
     language: str = "en-US"
 
 
-class SubscriptionOwner(BaseModel):
-    """Subscription or management group to owner mapping stored in Cosmos DB.
-
-    Can represent either a subscription or a management group owner.
-    When target_type is 'managementGroup', subscription_id contains the
-    management group ID and applies to all child subscriptions.
-    """
-
-    id: str
-    subscription_id: str = Field(..., alias="subscriptionId")
-    subscription_name: str | None = Field(None, alias="subscriptionName")
-    target_type: TargetType = Field(TargetType.SUBSCRIPTION, alias="targetType")
-    owner_email: str = Field(..., alias="ownerEmail")
-    owner_name: str | None = Field(None, alias="ownerName")
-    team_name: str | None = Field(None, alias="teamName")
-    cost_center: str | None = Field(None, alias="costCenter")
-    notification_preferences: NotificationPreferences = Field(
-        default_factory=NotificationPreferences, alias="notificationPreferences"
-    )
-    last_updated: datetime | None = Field(None, alias="lastUpdated")
-    data_source: str = Field("manual", alias="dataSource")
-
-    class Config:
-        populate_by_name = True
-        use_enum_values = True
-
-
 class FindingHistory(BaseModel):
     """Historical finding record stored in Cosmos DB findings-history container."""
 
@@ -261,6 +234,10 @@ class DetectionTarget(BaseModel):
 
     Represents a subscription or management group to scan for optimization
     opportunities. Different targets can belong to different teams.
+
+    Owner information is embedded directly in the target, eliminating the need
+    for a separate subscription-owners container. Multiple email addresses can
+    be specified for notifications.
     """
 
     id: str
@@ -270,7 +247,13 @@ class DetectionTarget(BaseModel):
     enabled: bool = True
     team_id: str | None = Field(None, alias="teamId")
     team_name: str | None = Field(None, alias="teamName")
-    owner_email: str | None = Field(None, alias="ownerEmail")
+    # Owner information (consolidated from subscription-owners)
+    owner_emails: list[str] = Field(default_factory=list, alias="ownerEmails")
+    owner_names: list[str] = Field(default_factory=list, alias="ownerNames")
+    notification_preferences: NotificationPreferences = Field(
+        default_factory=NotificationPreferences, alias="notificationPreferences"
+    )
+    cost_center: str | None = Field(None, alias="costCenter")
     description: str | None = None
     tags: dict[str, str] = Field(default_factory=dict)
     created_date: datetime | None = Field(None, alias="createdDate")
