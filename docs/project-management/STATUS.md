@@ -1,9 +1,9 @@
 # Implementation Status
 
-> Last Updated: 2026-01-11 (Phase 8 complete)
+> Last Updated: 2026-01-12 (Phase 9 in progress)
 
 ## Phase 1: Infrastructure ✅
-- [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP
+- [x] `infra/main.bicep` - All resources: Storage, Cosmos DB, Function App, Logic App, Log Analytics, NSP, AI Hub, AI Project
 - [x] `infra/main.bicepparam` - Deployment parameters
 - [x] Deploy to dev environment
 - [x] Validate RBAC assignments
@@ -46,7 +46,7 @@
 - [x] `src/agent/system_prompt.txt` - Agent instructions with workflow steps and recommendations
 - [x] `src/agent/tool_definitions.json` - OpenAPI-style tool schemas for all endpoints
 - [x] `src/agent/run_agent.py` - Orchestration script for local testing and production
-- [ ] Configure AI Foundry project (manual Azure portal step)
+- [ ] `scripts/configure_ai_agent.py` - Automated agent configuration via SDK (planned for Phase 9)
 - [ ] Test agent tool calls (requires deployed infrastructure)
 
 ## Phase 6: Notification Layer ✅
@@ -117,6 +117,28 @@
 - [x] Removed `data/seed/subscription-owners.sample.json`
 - [x] Run `/scrub` to verify no dead code - all stale references updated
 
+## Phase 9: Azure AI Agent Service Automation 🚧
+
+**Goal:** Automate Azure AI Agent Service deployment via Bicep and agent configuration via script.
+
+### Infrastructure Changes
+- [x] `infra/main.bicep` - Added Azure AI Services account (replaces Hub/Project architecture)
+- [x] `infra/main.bicep` - Added AI Project as child of AI Services account
+- [x] `infra/main.bicep` - Added GPT-4o model deployment
+- [x] `infra/main.bicep` - Added capability hosts for Agent Service (account + project level)
+- [x] `infra/main.bicepparam` - Updated parameters for AI Services architecture
+
+### Agent Configuration Script
+- [ ] `scripts/configure_ai_agent.py` - Creates/updates agent via Azure AI Projects SDK (uses AI Services endpoint)
+
+### Documentation Changes
+- [x] `docs/solution-docs/deployment-guide.md` - Updated for AI Services architecture
+
+### Pending
+- [ ] Test Bicep deployment with AI Services and capability hosts
+- [ ] Test agent configuration script
+- [ ] Update Phase 5 status when tested
+
 ## Testing & Validation
 - [x] `scripts/test_detector_live.py` - Live detector test against Azure subscriptions
 - [x] `scripts/test_data_layer_live.py` - Live data layer test against Cosmos DB
@@ -148,4 +170,4 @@
 
 ## Technical Debt / Revisit
 
-- None currently tracked
+- [ ] Check if `allowSharedKeyAccess` can be disabled on the storage account for Flex Consumption Function App - investigate using identity-based connections instead of connection strings

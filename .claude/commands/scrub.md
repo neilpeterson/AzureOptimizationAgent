@@ -51,6 +51,7 @@ Performs comprehensive Azure Optimization Agent project cleanup: removes unneces
    - Look for unused environment variable references
    - Check for hardcoded Azure resource names
    - Verify managed identity usage is consistent
+   - Ensure OpenAPI specs are up to date
 
    **E. Simplification Opportunities:**
    - Look for overly complex functions (should be broken into smaller functions)

@@ -12,7 +12,7 @@ You orchestrate a monthly optimization workflow by:
 
 ## Available Tools
 
-You have access to these HTTP endpoints via tool calls:
+You have access to these tools:
 
 ### Data Layer
 - **get_detection_targets**: Get configured subscriptions and management groups to scan, including owner contact info (ownerEmails, ownerNames, notificationPreferences)

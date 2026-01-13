@@ -1,6 +1,9 @@
 """Azure Functions entry point for the Optimization Agent.
 
-This module registers all HTTP triggers for the Data Layer and Detection Layer.
+This module provides HTTP-triggered Azure Functions for:
+- Data Layer: Detection targets, module registry, findings management
+- Detection Layer: Abandoned resources detection
+- Notification Layer: Email notifications via Logic App
 """
 
 from __future__ import annotations
@@ -20,27 +23,18 @@ from data_layer.get_findings_trends import get_findings_trends
 from data_layer.get_detection_targets import get_detection_targets
 from detection_layer.abandoned_resources import detect_from_dict
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Data Layer Endpoints
+# HTTP Endpoints
 # =============================================================================
 
 
 @app.route(route="get-module-registry", methods=["GET"])
 def get_module_registry_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Get all enabled modules from the registry.
-
-    GET /api/get-module-registry
-    Query params:
-        - include_disabled: bool (optional) - Include disabled modules
-
-    Returns:
-        200: List of module registry entries
-        500: Error response
-    """
+    """Get all enabled modules from the registry."""
     try:
         include_disabled = req.params.get("include_disabled", "false").lower() == "true"
         result = get_module_registry(include_disabled=include_disabled)
@@ -60,21 +54,7 @@ def get_module_registry_handler(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="save-findings", methods=["POST"])
 def save_findings_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Save findings to the findings-history container.
-
-    POST /api/save-findings
-    Body:
-        {
-            "executionId": "exec-001",
-            "moduleId": "abandoned-resources",
-            "findings": [...]
-        }
-
-    Returns:
-        200: Success with count of saved findings
-        400: Invalid request body
-        500: Error response
-    """
+    """Save findings to the findings-history container."""
     try:
         body = req.get_json()
     except ValueError:
@@ -117,19 +97,7 @@ def save_findings_handler(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="get-findings-history", methods=["GET"])
 def get_findings_history_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Get findings history for trend analysis.
-
-    GET /api/get-findings-history
-    Query params:
-        - subscription_id: str (required) - Subscription to query
-        - limit: int (optional) - Max results (default 100)
-        - status: str (optional) - Filter by status (open, resolved)
-
-    Returns:
-        200: List of historical findings
-        400: Missing required parameters
-        500: Error response
-    """
+    """Get findings history for trend analysis."""
     subscription_id = req.params.get("subscription_id")
     if not subscription_id:
         return func.HttpResponse(
@@ -163,35 +131,7 @@ def get_findings_history_handler(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="get-findings-trends", methods=["GET"])
 def get_findings_trends_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Get month-over-month findings trends for any detection module.
-
-    GET /api/get-findings-trends
-    Query params:
-        - module_id: str (required) - Module ID (e.g., 'abandoned-resources')
-        - months: int (optional) - Number of months to analyze (default: 3)
-        - subscription_id: str (optional) - Filter to specific subscription
-
-    Returns:
-        200: Trend data with monthly aggregates and change summary
-        400: Missing required parameters
-        500: Error response
-
-    Example response:
-        {
-            "moduleId": "abandoned-resources",
-            "trends": [
-                {"month": "2026-01", "totalFindings": 22, "totalCost": 850.00, ...},
-                {"month": "2025-12", "totalFindings": 50, "totalCost": 1920.00, ...}
-            ],
-            "summary": {
-                "hasComparison": true,
-                "findingsChange": -28,
-                "findingsChangePercent": -56.0,
-                "trend": "improving",
-                "message": "Great progress! Findings decreased from 50 to 22..."
-            }
-        }
-    """
+    """Get month-over-month findings trends."""
     module_id = req.params.get("module_id")
     if not module_id:
         return func.HttpResponse(
@@ -225,28 +165,7 @@ def get_findings_trends_handler(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="get-detection-targets", methods=["GET"])
 def get_detection_targets_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Get detection targets (subscriptions and management groups to scan).
-
-    GET /api/get-detection-targets
-    Query params:
-        - include_disabled: bool (optional) - Include disabled targets
-        - target_type: str (optional) - Filter by type ('subscription' or 'managementGroup')
-
-    Returns:
-        200: List of detection targets with counts
-        500: Error response
-
-    Example response:
-        {
-            "targets": [
-                {"targetId": "sub-123", "targetType": "subscription", "displayName": "Production", ...},
-                {"targetId": "mg-corp", "targetType": "managementGroup", "displayName": "Corporate", ...}
-            ],
-            "count": 2,
-            "subscriptionCount": 1,
-            "managementGroupCount": 1
-        }
-    """
+    """Get detection targets (subscriptions and management groups to scan)."""
     try:
         include_disabled = req.params.get("include_disabled", "false").lower() == "true"
         target_type = req.params.get("target_type")
@@ -269,29 +188,9 @@ def get_detection_targets_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
-# =============================================================================
-# Detection Layer Endpoints
-# =============================================================================
-
-
 @app.route(route="abandoned-resources", methods=["POST"])
 def abandoned_resources_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Run the abandoned resources detection module.
-
-    POST /api/abandoned-resources
-    Body:
-        {
-            "executionId": "exec-001",
-            "subscriptionIds": ["sub-1", "sub-2"],
-            "configuration": {},
-            "dryRun": false
-        }
-
-    Returns:
-        200: Module output with findings and summary
-        400: Invalid request body
-        500: Error response
-    """
+    """Run the abandoned resources detection module."""
     try:
         body = req.get_json()
     except ValueError:
@@ -324,35 +223,9 @@ def abandoned_resources_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
-# =============================================================================
-# Notification Layer Endpoints
-# =============================================================================
-
-
 @app.route(route="send-optimization-email", methods=["POST"])
 def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
-    """Send optimization report email via Logic App.
-
-    Supports multiple recipients for notifications.
-
-    POST /api/send-optimization-email
-    Body:
-        {
-            "ownerEmails": ["owner@example.com", "team@example.com"],
-            "ownerNames": ["John Doe", "Team DL"],
-            "subscriptionId": "sub-123",
-            "subscriptionName": "Production",
-            "findings": [...],
-            "trends": {...},
-            "totalEstimatedMonthlyCost": 500.00
-        }
-
-    Returns:
-        200: Email sent successfully
-        400: Invalid request body
-        500: Error sending email
-        503: Logic App URL not configured
-    """
+    """Send optimization report email via Logic App."""
     logic_app_url = os.environ.get("LOGIC_APP_URL")
     if not logic_app_url:
         return func.HttpResponse(
@@ -370,7 +243,6 @@ def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
             status_code=400,
         )
 
-    # Validate required fields
     owner_emails = body.get("ownerEmails", [])
     if not owner_emails or not body.get("subscriptionId") or not body.get("findings"):
         return func.HttpResponse(
@@ -380,15 +252,11 @@ def send_optimization_email_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # Add recommendations to findings if not present
-    findings_with_recommendations = []
     for finding in body.get("findings", []):
         if "recommendation" not in finding:
             finding["recommendation"] = _get_recommendation(finding.get("resourceType", ""))
-        findings_with_recommendations.append(finding)
-    body["findings"] = findings_with_recommendations
 
     try:
-        # Forward request to Logic App
         request_data = json.dumps(body).encode("utf-8")
         request_obj = urllib.request.Request(
             logic_app_url,
@@ -470,13 +338,7 @@ def _get_recommendation(resource_type: str) -> str:
 
 @app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def health_check(req: func.HttpRequest) -> func.HttpResponse:
-    """Health check endpoint.
-
-    GET /api/health
-
-    Returns:
-        200: Service is healthy
-    """
+    """Health check endpoint."""
     return func.HttpResponse(
         json.dumps({"status": "healthy", "service": "optimization-agent"}),
         mimetype="application/json",

@@ -20,6 +20,7 @@ OptimizationAgent/
 │   │   ├── function_app.py
 │   │   ├── requirements.txt
 │   │   ├── host.json
+│   │   ├── openapi.json            # OpenAPI spec for AI Agent
 │   │   ├── shared/
 │   │   │   ├── __init__.py
 │   │   │   ├── models.py           # Pydantic data contracts
@@ -55,8 +56,10 @@ OptimizationAgent/
 │       └── templates/
 │           └── email-template.html
 ├── scripts/                        # Test and utility scripts
-│   ├── test_detector_live.py
-│   └── test_data_layer_live.py
+│   ├── configure_logic_app.ps1     # Logic App configuration script
+│   ├── seed_cosmos.py              # Cosmos DB seed script
+│   ├── test_data_layer_live.py
+│   └── test_detector_live.py
 ├── docs/
 │   ├── project-management/         # Planning and status docs
 │   │   ├── PLAN.md
