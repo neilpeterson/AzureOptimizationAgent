@@ -1,0 +1,514 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Azure Optimization Agent API",
+    "description": "API for the Azure Optimization Agent - detects cost optimization opportunities across Azure subscriptions",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://func-optimization-agent-cenus.azurewebsites.net/api",
+      "description": "Production Function App"
+    }
+  ],
+  "paths": {
+    "/get-detection-targets": {
+      "get": {
+        "operationId": "getDetectionTargets",
+        "summary": "Get detection targets",
+        "description": "Get all enabled detection targets (subscriptions and management groups) to scan, including owner contact information",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "description": "Include disabled targets in the response",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "target_type",
+            "in": "query",
+            "description": "Filter to only return targets of this type",
+            "schema": {
+              "type": "string",
+              "enum": ["subscription", "managementGroup"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of detection targets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "targets": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DetectionTarget"
+                      }
+                    },
+                    "count": { "type": "integer" },
+                    "subscriptionCount": { "type": "integer" },
+                    "managementGroupCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get-module-registry": {
+      "get": {
+        "operationId": "getModuleRegistry",
+        "summary": "Get enabled detection modules",
+        "description": "Get all enabled detection modules from the registry with their configuration",
+        "parameters": [
+          {
+            "name": "include_disabled",
+            "in": "query",
+            "description": "Include disabled modules in the response",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of module registry entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "modules": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ModuleRegistry"
+                      }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/abandoned-resources": {
+      "post": {
+        "operationId": "abandonedResources",
+        "summary": "Run abandoned resources detection",
+        "description": "Scan subscriptions and/or management groups for orphaned resources like unattached disks, unused public IPs, empty load balancers, etc.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection results with findings and summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleOutput"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/save-findings": {
+      "post": {
+        "operationId": "saveFindings",
+        "summary": "Save detection findings",
+        "description": "Save detection findings to the findings-history database for tracking and trend analysis",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["executionId", "moduleId", "findings"],
+                "properties": {
+                  "executionId": {
+                    "type": "string",
+                    "description": "Unique execution identifier (format: exec-YYYY-MM-DD-NNN)"
+                  },
+                  "moduleId": {
+                    "type": "string",
+                    "description": "Module that generated the findings"
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Finding"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Save result with count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "saved": { "type": "integer" },
+                    "executionId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get-findings-history": {
+      "get": {
+        "operationId": "getFindingsHistory",
+        "summary": "Get findings history",
+        "description": "Query historical findings for a specific subscription",
+        "parameters": [
+          {
+            "name": "subscription_id",
+            "in": "query",
+            "required": true,
+            "description": "Azure subscription ID to query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of findings to return",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by finding status",
+            "schema": {
+              "type": "string",
+              "enum": ["open", "resolved"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of historical findings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "findings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Finding"
+                      }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get-findings-trends": {
+      "get": {
+        "operationId": "getFindingsTrends",
+        "summary": "Get findings trends",
+        "description": "Get month-over-month trend analysis showing if findings are improving, worsening, or stable",
+        "parameters": [
+          {
+            "name": "module_id",
+            "in": "query",
+            "required": true,
+            "description": "Module ID to get trends for (e.g., 'abandoned-resources')",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "months",
+            "in": "query",
+            "description": "Number of months of history to analyze",
+            "schema": {
+              "type": "integer",
+              "default": 3
+            }
+          },
+          {
+            "name": "subscription_id",
+            "in": "query",
+            "description": "Filter trends to a specific subscription",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trend data with monthly aggregates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/send-optimization-email": {
+      "post": {
+        "operationId": "sendOptimizationEmail",
+        "summary": "Send optimization email",
+        "description": "Send a personalized optimization report email to subscription owners via Logic App",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Health check",
+        "description": "Check if the optimization agent service is healthy",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "service": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DetectionTarget": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "targetId": { "type": "string" },
+          "targetType": {
+            "type": "string",
+            "enum": ["subscription", "managementGroup"]
+          },
+          "displayName": { "type": "string" },
+          "enabled": { "type": "boolean" },
+          "ownerEmails": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "ownerNames": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "teamId": { "type": "string" },
+          "teamName": { "type": "string" }
+        }
+      },
+      "ModuleRegistry": {
+        "type": "object",
+        "properties": {
+          "moduleId": { "type": "string" },
+          "displayName": { "type": "string" },
+          "enabled": { "type": "boolean" },
+          "endpoint": { "type": "string" },
+          "configuration": { "type": "object" }
+        }
+      },
+      "ModuleInput": {
+        "type": "object",
+        "required": ["executionId"],
+        "properties": {
+          "executionId": {
+            "type": "string",
+            "description": "Unique execution identifier (format: exec-YYYY-MM-DD-NNN)"
+          },
+          "subscriptionIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of Azure subscription IDs to scan"
+          },
+          "managementGroupIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of management group IDs to scan"
+          },
+          "configuration": {
+            "type": "object",
+            "description": "Module-specific configuration overrides"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "If true, detect but don't persist findings",
+            "default": false
+          }
+        }
+      },
+      "ModuleOutput": {
+        "type": "object",
+        "properties": {
+          "moduleId": { "type": "string" },
+          "executionId": { "type": "string" },
+          "status": { "type": "string" },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            }
+          },
+          "summary": { "type": "object" },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "Finding": {
+        "type": "object",
+        "properties": {
+          "findingId": { "type": "string" },
+          "subscriptionId": { "type": "string" },
+          "resourceId": { "type": "string" },
+          "resourceType": { "type": "string" },
+          "resourceName": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["abandoned", "overprovisioned", "idle", "misconfigured", "opportunity"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "informational"]
+          },
+          "confidenceScore": { "type": "number" },
+          "confidenceLevel": { "type": "string" },
+          "estimatedMonthlyCost": { "type": "number" },
+          "recommendation": { "type": "string" }
+        }
+      },
+      "TrendResponse": {
+        "type": "object",
+        "properties": {
+          "moduleId": { "type": "string" },
+          "trends": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": { "type": "string" },
+                "totalFindings": { "type": "integer" },
+                "totalCost": { "type": "number" }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "trend": {
+                "type": "string",
+                "enum": ["improving", "worsening", "stable"]
+              },
+              "message": { "type": "string" },
+              "findingsChange": { "type": "integer" },
+              "findingsChangePercent": { "type": "number" }
+            }
+          }
+        }
+      },
+      "EmailRequest": {
+        "type": "object",
+        "required": ["ownerEmails", "subscriptionId", "findings"],
+        "properties": {
+          "ownerEmails": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Email addresses of the subscription owners"
+          },
+          "ownerNames": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Display names of the owners"
+          },
+          "subscriptionId": { "type": "string" },
+          "subscriptionName": { "type": "string" },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            }
+          },
+          "trends": {
+            "$ref": "#/components/schemas/TrendResponse"
+          },
+          "totalEstimatedMonthlyCost": { "type": "number" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Microsoft Entra ID bearer token (managed identity)"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

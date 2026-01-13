@@ -3,10 +3,12 @@
 // =============================================================================
 // Deploys all resources for the optimization agent solution:
 // - Storage Account (for Function App)
-// - Cosmos DB (serverless) with 5 containers
-// - App Service Plan (consumption)
-// - Function App with system-assigned managed identity
+// - Cosmos DB (serverless) with 4 containers
+// - App Service Plan (Flex Consumption)
+// - Function App with HTTP-triggered functions
 // - Logic App for email notifications
+// - Azure AI Services Account with Agent Service capability
+// - Azure AI Project with GPT-4o deployment
 // =============================================================================
 
 // =============================================================================
@@ -42,6 +44,18 @@ param logAnalyticsWorkspaceName string
 
 @description('Network Security Perimeter name')
 param networkSecurityPerimeterName string = 'nsp-optimization-agent'
+
+@description('Azure AI Services account name')
+param aiServicesAccountName string
+
+@description('Azure AI Project name')
+param aiProjectName string
+
+@description('GPT-4o model deployment name')
+param gpt4oDeploymentName string = 'gpt-4o'
+
+@description('Location for AI Services (must support Agent Service)')
+param aiServicesLocation string = 'eastus'
 
 // =============================================================================
 // Storage Account (for Function App)
@@ -408,9 +422,6 @@ var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 @description('Storage Account Contributor role ID')
 var storageAccountContributorRoleId = '17d1049b-9a84-46fb-8f53-869881c3d3ab'
 
-@description('Storage Queue Data Contributor role ID')
-var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
-
 resource storageBlobDataOwnerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageAccount.id, functionApp.id, storageBlobDataOwnerRoleId)
   scope: storageAccount
@@ -426,16 +437,6 @@ resource storageAccountContributorAssignment 'Microsoft.Authorization/roleAssign
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageAccountContributorRoleId)
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource storageQueueDataContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, functionApp.id, storageQueueDataContributorRoleId)
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
@@ -493,6 +494,102 @@ resource cosmosDbNspAssociation 'Microsoft.Network/networkSecurityPerimeters/res
 }
 
 // =============================================================================
+// Azure AI Services Account (for Agent Service)
+// =============================================================================
+
+resource aiServicesAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+  name: aiServicesAccountName
+  location: aiServicesLocation
+  sku: {
+    name: 'S0'
+  }
+  kind: 'AIServices'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    allowProjectManagement: true
+    customSubDomainName: toLower(aiServicesAccountName)
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
+    publicNetworkAccess: 'Enabled'
+    disableLocalAuth: false
+  }
+  tags: {
+    application: 'optimization-agent'
+  }
+}
+
+// =============================================================================
+// Azure AI Project
+// =============================================================================
+
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+  parent: aiServicesAccount
+  name: aiProjectName
+  location: aiServicesLocation
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    description: 'AI Project for Azure Optimization Agent'
+    displayName: 'Optimization Agent Project'
+  }
+  tags: {
+    application: 'optimization-agent'
+  }
+}
+
+// =============================================================================
+// GPT-4o Model Deployment
+// =============================================================================
+
+resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: aiServicesAccount
+  name: gpt4oDeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-4o'
+      version: '2024-11-20'
+    }
+  }
+}
+
+// =============================================================================
+// Agent Service Capability Hosts
+// =============================================================================
+
+resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2025-04-01-preview' = {
+  parent: aiServicesAccount
+  name: 'default'
+  properties: {
+    capabilityHostKind: 'Agents'
+  }
+  dependsOn: [
+    gpt4oDeployment
+  ]
+}
+
+resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2025-04-01-preview' = {
+  parent: aiProject
+  name: 'default'
+  properties: {
+    capabilityHostKind: 'Agents'
+  }
+  dependsOn: [
+    accountCapabilityHost
+  ]
+}
+
+// =============================================================================
 // Outputs
 // =============================================================================
 
@@ -534,3 +631,15 @@ output networkSecurityPerimeterNameOutput string = networkSecurityPerimeter.name
 
 @description('Network Security Perimeter ID')
 output networkSecurityPerimeterId string = networkSecurityPerimeter.id
+
+@description('Azure AI Services account name')
+output aiServicesAccountNameOutput string = aiServicesAccount.name
+
+@description('Azure AI Services endpoint')
+output aiServicesEndpoint string = aiServicesAccount.properties.endpoint
+
+@description('Azure AI Project name')
+output aiProjectNameOutput string = aiProject.name
+
+@description('GPT-4o deployment name')
+output gpt4oDeploymentNameOutput string = gpt4oDeployment.name
